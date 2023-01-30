@@ -2,19 +2,18 @@ import {
     b2Contact, b2ContactImpulse, b2ContactListener,
     b2Fixture,
     b2Manifold, b2World,
-    b2ParticleBodyContact, b2ParticleContact, b2ParticleSystem,
+    // b2ParticleBodyContact, b2ParticleContact, b2ParticleSystem,
     b2Shape, b2Vec2, XY
 } from '@flyover/box2d';
 import * as Debug from 'debug';
 import { IFixtureUserData, IBodyUserData } from '../client-src/PhysicsSystem';
 import { Player } from './Player';
 import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
-import { AttackHappenedMessage, DiceDroppedMessage, PlayerState, StateMessage } from '../model/EventsFromServer';
+import { PlayerState, StateMessage } from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
 import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
 import { names } from '../model/Names'
-import { Dice, DiceState, DiceType, RollsStats, Suit, TransferDiceResult } from '../model/Dice';
 
 
 const verbose = Debug('shroom-io:Game:verbose');
@@ -48,7 +47,7 @@ export class Game {
 
     init() {
         this.setUpPhysics();
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 10; i++) {
             const player = this.spawnNpc();
         }
     }
@@ -61,57 +60,6 @@ export class Game {
         return this.getPlayerById(socketId) != null;
     }
 
-    spawnNpc() {
-        const npc = Player.create(names[~~(Math.random() * names.length)]);
-        if (npc) this.players.push(npc);
-        npc.createPhysics(this.physicsSystem, () => { });
-
-        this.randomizePlayerPosition(npc);
-
-        const displacement = new b2Vec2(
-            WORLD_WIDTH / 2 - npc.x,
-            WORLD_HEIGHT / 2 - npc.y
-        );
-        let tier = 0;
-        if (displacement.Length() < 200) tier = 2;
-        else if (displacement.Length() < 500) tier = 1;
-
-        npc.diceList = [
-            Dice.getRandomDice(tier)!,
-            Dice.getRandomDice(tier)!,
-            Dice.getRandomDice(tier)!,
-        ];
-        if (tier == 1) npc.diceList.push(Dice.getRandomDice(0)!);
-        if (tier == 2) npc.diceList.push(Dice.getRandomDice(1)!);
-
-
-        spawnLog('getRandomDice', npc.diceList.map(d => d.symbol).join(''));
-
-
-        return npc;
-    }
-    reuseNpc(npc: Player) {
-        spawnLog('reuseNpc', npc.entityId);
-
-        this.randomizePlayerPosition(npc);
-
-        const displacement = new b2Vec2(
-            WORLD_WIDTH / 2 - npc.x,
-            WORLD_HEIGHT / 2 - npc.y
-        );
-        let tier = 0;
-        if (displacement.Length() < 600) tier = 2;
-        else if (displacement.Length() < 1200) tier = 1;
-
-        npc.diceList = [
-            Dice.getRandomDice(tier)!,
-            Dice.getRandomDice(tier)!,
-            Dice.getRandomDice(tier)!,
-        ];
-        spawnLog('getRandomDice', npc.diceList.map(d => d.symbol).join(''));
-
-        npc.deleteAfterTick = undefined;
-    }
 
 
     randomizePlayerPosition(player: Player) {
@@ -140,7 +88,6 @@ export class Game {
         this.distanceMatrix.insertTransform(player);
 
         spawnLog(`Created player ${player.entityId}`);
-        spawnLog('getRandomDice', player.diceList.map(d => d.symbol).join(''));
         return player;
     }
     onPlayerDisconnected(playerId: string) {
@@ -162,6 +109,7 @@ export class Game {
     }
 
     getViewForPlayer(playerId: string, isFullState = false): StateMessage | null {
+
         const existingPlayer = this.getPlayerById(playerId);
         if (existingPlayer == null) {
             // console.warn('getViewForPlayer: no player found');
@@ -171,22 +119,14 @@ export class Game {
         const state = (this.players
             .filter(player => {
                 if (!player.b2Body) return false;
-                // if (!isWelcome && player.b2Body.m_linearVelocity.Length() < 0.001) return false;
-                // if (player.sync.lastUpdated==0) return false;
                 if (!isFullState && this.distanceMatrix.getDistanceBetween(existingPlayer, player) > 300) return false;
-
                 return true;
             })
             .map(player => {
-
                 return {
                     entityId: player.entityId,
                     x: player.x,
                     y: player.y,
-                    vx: player.vx,
-                    vy: player.vy,
-                    angle: player.angle, // in degrees
-                    vAngle: player.vAngle,
                     r: player.r, // radius
 
                     name: player.name,
@@ -195,15 +135,6 @@ export class Game {
                     isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
                     nextMoveTick: player.nextMoveTick,
                     nextCanShoot: player.nextCanShoot,
-
-                    diceList: player.diceList.map(dice => ({
-                        diceName: dice.diceName,
-                        diceEnabled: dice.diceEnabled,
-                        diceType: DiceType.DICE,
-                        diceIsKept: true,
-                        sideId: -1,
-                    })),
-                    buffList: player.buffs,
                 } as PlayerState;
             })
         );
@@ -215,56 +146,9 @@ export class Game {
     }
 
     onPlayerDash(playerId: string, dashVector: XY) {
-        const player = this.getPlayerById(playerId);
-        if (player == null) {
-            console.warn('onPlayerDash: no player found');
-            return;
-        }
-
-        player.applyDashImpulse(dashVector);
     }
 
     onPlayerDropDice(playerId: string, slotId: number) {
-        const player = this.getPlayerById(playerId);
-        if (player == null) {
-            console.warn('onPlayerDropDice: no player found');
-            return;
-        }
-
-        if (player.diceList.length <= 0) {
-            console.warn(`dropDice: Player ${player.name} can't drop the last dice!`);
-            return;
-        }
-
-        if (!player.hasDiceInSlot(slotId)) {
-            console.warn(`dropDice: Player ${player.name} doesn't have dice in slot ${slotId}`);
-            return;
-        }
-
-
-        const dice = player.removeDice(slotId);
-        const {
-            roll,
-            rollDisplacement,
-            addedBuffs,
-        } = this.turnDiceIntoBuff(player, dice);
-
-        if (addedBuffs.length > 0) {
-            player.nextCanShoot = Date.now() + 2500;
-        } else {
-            player.nextCanShoot = Date.now() + 1500;
-        }
-
-        const message: DiceDroppedMessage = {
-            playerId: player.entityId,
-            roll,
-            rollPosition: {
-                x: player.x + rollDisplacement.x,
-                y: player.y + rollDisplacement.y,
-            },
-            addedBuffs,
-        };
-        this.emitToAll('dice-dropped', message);
     }
 
     getEntityList() {
@@ -276,33 +160,7 @@ export class Game {
     }
 
     getEntityData(playerId: string) {
-        const state = (this.players
-            .map(player => {
-                return {
-                    entityId: player.entityId,
-                    x: player.x,
-                    y: player.y,
-                    vx: player.vx,
-                    vy: player.vy,
-                    angle: player.angle, // in degrees
-                    vAngle: player.vAngle,
-                    r: player.r, // radius
-
-                    name: player.name,
-                    color: player.color,
-                    isHuman: player.isHuman,
-                    isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
-                    nextMoveTick: player.nextMoveTick,
-
-                    diceList: player.diceList.map(dice => ({
-                        diceName: dice.diceName,
-                        diceEnabled: dice.diceEnabled,
-                        sideId: -1,
-                    })),
-                } as PlayerState;
-            })
-        );
-
+        const state = {};
         return state;
     }
 
@@ -310,16 +168,7 @@ export class Game {
         return this.physicsSystem.getBodyData();
     }
 
-    cheatPlayerDice(playerId: string, diceString: string) {
-        const existingPlayer = this.getPlayerById(playerId);
-        if (existingPlayer == null) {
-            console.warn('onPlayerDisconnected: no player found');
-            return;
-        }
-
-        existingPlayer.diceList = diceString.split(',').filter(a => a).map((diceName: string) => {
-            return Dice.create(diceName[0], diceName);
-        });
+    cheatPlayerDice() {
     }
 
     update() {
@@ -369,81 +218,19 @@ export class Game {
 
     getTransformList = () => ([...this.players]);
 
+    spawnNpc() {
+        log('spawnNpc');
+
+        const npc = Player.create(names[~~(Math.random() * names.length)]);
+        if (npc) this.players.push(npc);
+        npc.createPhysics(this.physicsSystem, () => { });
+        this.randomizePlayerPosition(npc);
+
+        return npc;
+
+    }
+
     updatePlayers() {
-        const updatePlayer = (player: Player) => {
-            let xx = 0;
-            let yy = 0;
-
-            if (!player.isHuman && player.canShoot() && Date.now() >= player.aiNextTick) {
-                type AiMetadata = {
-                    player: Player,
-                    dist: number,
-                    diceCount: number,
-                };
-                const distanceWithMe: AiMetadata[] = (this.distanceMatrix.getEntitiesClosestTo(player.entityId, 5)
-                    // map to player + distance
-                    .map(([entityId, dist]) => [
-                        this.players.find(p => p.entityId == entityId),
-                        dist,
-                    ])
-                    .filter((arr): arr is [Player, number] => arr[0] != null) // filter undefined
-                    .map(([player, dist]) => ({ player, dist }))
-                    .map((metadata) => {
-                        const { player } = metadata;
-                        const diceCount = player.diceList.length;
-                        return {
-                            ...metadata,
-                            diceCount,
-                        };
-                    })
-                );
-                distanceWithMe.sort((a, b) => a.diceCount - b.diceCount);
-
-                aiLog('Closest 5 enemies: ', distanceWithMe.map(({ player: p, diceCount, dist }) => `${p.name}(${diceCount}, ${dist.toFixed()})`));
-                const target = distanceWithMe[0];
-
-                player.targetId = target.player.entityId;
-
-                const dashVector = {
-                    x: target.player.x - player.x,
-                    y: target.player.y - player.y
-                };
-
-                player.applyDashImpulse(dashVector);
-
-                player.aiNextTick = Date.now() + 1000 + Math.floor(Math.random() * 3000);
-            }
-
-        };
-
-        // death of npc
-        for (let i = 0; i < this.players.length; /* */) {
-            const player = this.players[i];
-            if (player.deleteAfterTick != null && Date.now() > player.deleteAfterTick) {
-                this.reuseNpc(player);
-            } else if (!player.isHuman && (player.x < 0 || player.x > WORLD_WIDTH || player.y < 0 || player.y > WORLD_HEIGHT)) {
-                this.reuseNpc(player);
-            }
-            i++;
-        }
-
-
-        for (const player of this.players) {
-            updatePlayer(player);
-        }
-
-        // const updatedPlayers = this.players.filter(player => {
-        //     return (player.sync.lastUpdated > 0);
-        // }).map(player => (
-        //     [
-        //         player.entityId,
-        //         player.x.toFixed(1),
-        //         player.y.toFixed(1),
-        //     ].join(' ')
-        // ));
-        // if (updatedPlayers.length > 0) {
-        //     console.log(`updatedPlayers: ${updatedPlayers.join('\n')}`);
-        // }
     }
 
     setUpPhysics() {

@@ -1,7 +1,7 @@
 import {
     b2Contact, b2ContactImpulse, b2ContactListener,
     b2Fixture, b2Manifold,
-    b2ParticleBodyContact, b2ParticleContact, b2ParticleSystem,
+    // b2ParticleBodyContact, b2ParticleContact, b2ParticleSystem,
     b2Shape,
     b2Vec2
 } from '@flyover/box2d';
@@ -29,12 +29,8 @@ import { DistanceMatrix } from '../../utils/DistanceMatrix';
 import { capitalize, lerpRadians } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
-import { AttackHappenedMessage, DebugInspectReturn, DiceDroppedMessage, PlayerState, PongMessage, StateMessage } from '../../model/EventsFromServer';
+import { DebugInspectReturn, PlayerState, PongMessage, StateMessage } from '../../model/EventsFromServer';
 import { StartMessage } from '../../model/EventsFromClient';
-
-import { Dice, DiceSide, DiceType, RollsStats, Suit } from '../../model/Dice';
-import { DiceSprite } from '../gameObjects/DiceSprite';
-import { RollAnimation } from '../gameObjects/RollAnimation';
 
 
 type BaseSound = Phaser.Sound.BaseSound;
@@ -118,14 +114,14 @@ export class MainScene extends Phaser.Scene {
     preload() {
         log('preload');
         _assets_preload.call(this);
-        socketLog.enabled = (localStorage.getItem('md.dickson.showSocketLog') || 'false') == 'true';
+        socketLog.enabled = (localStorage.getItem('dicksonMd.showSocketLog') || 'false') == 'true';
     }
 
     initSocket() {
         let reconnectionCounts = 0;
         if (this.startButton) this.startButton.value = 'Connecting...';
-        const ws_url = localStorage.getItem('md.dickson.ws_url') || WS_URL;
-        if (localStorage.getItem('md.dickson.ws_url')) {
+        const ws_url = localStorage.getItem('dicksonMd.ws_url') || WS_URL;
+        if (localStorage.getItem('dicksonMd.ws_url')) {
             console.log(`Connection to ${ws_url}`);
         }
         this.socket = io(ws_url, {
@@ -193,160 +189,6 @@ export class MainScene extends Phaser.Scene {
             leavingPlayer.destroy();
             delete this.entityList[playerId];
         });
-        this.socket.on('fight', (message: AttackHappenedMessage) => {
-            const {
-                untilTick,
-                result,
-                playerAPos, displacementAB,
-                playerAId, playerBId,
-                netDamageA, netDamageB,
-                rollsA, rollsB,
-                transferredDice,
-            } = message;
-
-            const vectorAB = new b2Vec2(
-                displacementAB.x,
-                displacementAB.y
-            );
-
-            const msg = [`fight: `,
-                `${playerAId}(${RollsStats.getRollSuits(message.rollsA).join('')}, ${netDamageA}dmg)`,
-                ` vs ` +
-                `${playerBId}(${RollsStats.getRollSuits(message.rollsB).join('')}, ${netDamageB}dmg)`,
-                `, result=${result})`
-            ].join('');
-            socketLog(msg);
-
-            const playerA = this.entityList[playerAId];
-            const playerB = this.entityList[playerBId];
-
-            if (!playerA) {
-                console.warn(`Fight: PlayerA ${playerAId} not found.`);
-                return;
-            }
-            if (!playerB) {
-                console.warn(`Fight: PlayerB ${playerBId} not found.`);
-                return;
-            }
-
-            const msgLabel = new RollAnimation(this, message);
-
-            msgLabel.setPosition(
-                (playerA.x + playerB.x) / 2,
-                (playerA.y + playerB.y) / 2,
-            );
-            this.effectsLayer.add(msgLabel);
-            msgLabel.setName('roll-animation');
-
-            const rotation = Math.atan2(
-                vectorAB.y,
-                vectorAB.x
-            );
-
-
-            msgLabel.setRotation(rotation - Math.PI / 2);
-
-            msgLabel.updateDice();
-        });
-
-        this.socket.on('dice-dropped', (message: DiceDroppedMessage) => {
-            console.log('dice-dropped', message);
-
-            const {
-                playerId,
-                roll,
-                rollPosition,
-                addedBuffs,
-            } = message;
-
-            const { diceName, diceType, sideId, diceEnabled, diceIsKept } = roll;
-            const player = this.entityList[playerId];
-            if (player == null) {
-                console.warn(`Player ${playerId} not found`);
-                return;
-            }
-
-            const diceSprite = new DiceSprite(this, diceName, diceType, sideId, playerId, -1);
-            diceSprite.setPosition(
-                player.x,
-                player.y
-            );
-
-            diceSprite.setScale(0);
-
-            this.add.tween({
-                targets: diceSprite,
-                x: { from: player.x, to: rollPosition.x },
-                y: { from: player.y, to: rollPosition.y },
-                scale: { from: 0.3, to: 0.6 },
-                ease: 'Cubic', // 'Cubic', 'Elastic', 'Bounce', 'Back'
-                duration: 500,
-                repeat: 0, // -1: infinity
-                yoyo: false,
-            }).on('complete', () => {
-                if (!diceIsKept) {
-                    diceSprite.destroy();
-                    return;
-                }
-                const dir = Math.PI * 2 * Math.random();
-
-                const buffSprites = addedBuffs.map((addedBuff, i) => {
-                    const { diceName, diceType, diceIsKept } = addedBuff;
-                    const buffSprite = new DiceSprite(this, diceName, diceType, sideId, -1, -1);
-
-                    const displacement = b2Vec2.UNITX.Clone();
-                    displacement.SelfMul(20).SelfRotate(dir + Math.PI * i);
-
-                    buffSprite.setScale(0.3);
-                    buffSprite.isTransferred = true;
-                    buffSprite.playerEntityId = playerId;
-
-                    this.add.tween({
-                        targets: buffSprite,
-                        x: { from: diceSprite.x, to: (diceSprite.x + displacement.x) },
-                        y: { from: diceSprite.y, to: (diceSprite.y + displacement.y) },
-                        ease: 'Cubic', // 'Cubic', 'Elastic', 'Bounce', 'Back'
-                        duration: 500,
-                        repeat: 0, // -1: infinity
-                        yoyo: false,
-                    }).on('complete', () => {
-                        if (!diceIsKept) {
-                            buffSprite.destroy();
-                            return;
-                        }
-                        const begin = Date.now() + 500;
-                        const end = Date.now() + 1500;
-                        const animationLength = begin - end;
-
-                        const moveTowardsPlayer = () => {
-                            if (Date.now() > end) {
-                                buffSprite.destroy();
-                                this.events.off('update', moveTowardsPlayer);
-                                return;
-                            }
-                            if (Date.now() < begin) {
-                                return;
-                            }
-                            const pos = player;
-                            const dir = new b2Vec2(
-                                pos.x - buffSprite.x,
-                                pos.y - buffSprite.y
-                            );
-                            const dist = dir.Length();
-                            const speed = dist / Math.max(1, (end - Date.now()) / 100);
-                            dir.SelfNormalize().SelfMul(speed);
-                            buffSprite.x += dir.x;
-                            buffSprite.y += dir.y;
-                        }
-                        this.events.on('update', moveTowardsPlayer);
-                    });
-                    return buffSprite;
-                })
-                this.effectsLayer.add(buffSprites);
-                diceSprite.destroy();
-            });
-            this.effectsLayer.add(diceSprite);
-        });
 
         this.socket.onAny((event, ...args) => {
             if (event == 'state') return;
@@ -409,7 +251,7 @@ export class MainScene extends Phaser.Scene {
             this.uiLayer.setPosition(
                 this.mainCamera.scrollX,
                 this.mainCamera.scrollY
-            )
+            );
         })
         log('create complete');
     }
@@ -453,7 +295,6 @@ export class MainScene extends Phaser.Scene {
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         // this.distanceMatrix.init([this.bluePlayer, this.redPlayer, ...this.blueAi, ...this.redAi, ...this.items]);
-        this.updatePlayers(fixedTime, frameSize);
         for (const scoreLabel of (this.effectsLayer.list as Container[])) {
             if (scoreLabel.name == 'roll-animation') {
                 scoreLabel.update();
@@ -569,76 +410,32 @@ export class MainScene extends Phaser.Scene {
     }
 
     setUpTutorial() {
-        let image: Image;
-        let text: Text;
-
-        let y = 50;
-        for (const [i, [diceName, def]] of Object.entries(Dice.diceDefinitions).entries()) {
-            let x = 50;
-            const { color, desc, sides } = def;
-            text = this.make.text({
-                x: x, y: y,
-                text: diceName,
-                style: { align: 'center', color: '#000' }
-            });
-
-            x += 100;
-
-            for (const [j, suit] of sides.split('').entries()) {
-                const posX = x + 40 * j;
-                const posY = y;
-                image = this.make.image({
-                    x: posX, y: posY,
-                    key: 'dice_empty',
-                });
-
-                image.setScale(0.6);
-                image.setTint(color);
-                this.manualLayer.add(image);
-
-
-                const key = DiceSide.spriteKey[suit as Suit];
-
-                if (key != ' ') {
-                    image = this.make.image({
-                        x: posX, y: posY,
-                        key,
-                    });
-
-                    image.setScale(0.4);
-                    image.setTint(0x444444);
-                    this.manualLayer.add(image);
-                }
-            }
-
-            y += 48;
-        }
     }
 
     setUpConsoleCheat() {
-        const w = (window as any);
-        w._debugToggleEntityId = () => {
-            let val: boolean | null = null;
-            Object.values(this.entityList).forEach(player => {
-                if (val == null) val = !player._debugShowEntityId;;
-                player._debugShowEntityId = val;
-            })
-        };
+        // const w = (window as any);
+        // w._debugToggleEntityId = () => {
+        //     let val: boolean | null = null;
+        //     Object.values(this.entityList).forEach(player => {
+        //         if (val == null) val = !player._debugShowEntityId;;
+        //         player._debugShowEntityId = val;
+        //     })
+        // };
 
-        w._debugInspectServer = (cmd: string, params?: any) => {
-            if (cmd.startsWith('cheat')) {
-                this.socket.emit('cheat', {
-                    cmd: cmd.replace('cheat-', ''),
-                    ...params,
-                });
-            } else {
-                this.socket.emit('debug-inspect', { cmd });
-            }
-        };
+        // w._debugInspectServer = (cmd: string, params?: any) => {
+        //     if (cmd.startsWith('cheat')) {
+        //         this.socket.emit('cheat', {
+        //             cmd: cmd.replace('cheat-', ''),
+        //             ...params,
+        //         });
+        //     } else {
+        //         this.socket.emit('debug-inspect', { cmd });
+        //     }
+        // };
 
-        w._debugToggleSocketLogs = () => {
-            socketLog.enabled = !socketLog.enabled;
-        };
+        // w._debugToggleSocketLogs = () => {
+        //     socketLog.enabled = !socketLog.enabled;
+        // };
     }
 
     createInventoryUi() {
@@ -648,96 +445,40 @@ export class MainScene extends Phaser.Scene {
                 .fillRect(0, 0, CAMERA_WIDTH, 64)
         ]);
 
-        this.inventoryUi.setInteractive({
-            hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, 64),
-            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-            draggable: false,
-            dropZone: false,
-            useHandCursor: false,
-            cursor: 'pointer',
-            pixelPerfect: false,
-            alphaTolerance: 1
-        })
-            // .on('pointerover', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-            //     console.log('pointerover');
-            // })
-            // .on('pointerout', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-            //     console.log('pointerover');
-            // })
-            // .on('pointerdown', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-            //     console.log('pointerdown');
-            //     console.log(event);
-            //     event.stopPropagation();
-            // })
-            // .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-            //     console.log('pointerup');
-            //     console.log(event);
-            //     event.stopPropagation();
+        // this.inventoryUi.setInteractive({
+        //     hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, 64),
+        //     hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        //     draggable: false,
+        //     dropZone: false,
+        //     useHandCursor: false,
+        //     cursor: 'pointer',
+        //     pixelPerfect: false,
+        //     alphaTolerance: 1
+        // })
+        // .on('pointerover', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
+        //     console.log('pointerover');
+        // })
+        // .on('pointerout', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
+        //     console.log('pointerover');
+        // })
+        // .on('pointerdown', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
+        //     console.log('pointerdown');
+        //     console.log(event);
+        //     event.stopPropagation();
+        // })
+        // .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
+        //     console.log('pointerup');
+        //     console.log(event);
+        //     event.stopPropagation();
 
-            //     this.socket.emit('drop-dice', { slotId: 0 });
-            // })
-            ;
-
-
-        const gap = CAMERA_WIDTH / 8;
-        const startX = gap / 2;
-        this.inventoryUi.add(
-            this.inventoryIcons = this.make.container({ x: 0, y: 0 })
-                .add(
-                    [...Array(8)].map((_, i) => {
-                        return (new DiceSprite(this, 'WHITE', DiceType.DICE, -1, -1, i)
-                            .setVisible(false)
-                            .setScale(0.8)
-                            .setPosition(
-                                startX + gap * i,
-                                32
-                            )
-                            .setInteractive({
-                                hitArea: new Phaser.Geom.Rectangle(-32, -32, 64, 64),
-                                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-                                draggable: false,
-                                dropZone: false,
-                                useHandCursor: false,
-                                cursor: 'pointer',
-                                pixelPerfect: false,
-                                alphaTolerance: 1
-                            })
-                            .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                                console.log('pointerup');
-                                // console.log(event);
-                                event.stopPropagation();
-                                console.log('drop-dice', i);
-
-                                this.socket.emit('drop-dice', { slotId: i });
-                            })
-                        );
-                    })
-                )
-        );
+        //     this.socket.emit('drop-dice', { slotId: 0 });
+        // })
+        ;
 
         return this.inventoryUi;
     }
 
     updateInventoryUi(playerState: PlayerState) {
-        const { diceList, nextCanShoot } = playerState;
-        if (this.mainPlayer == null) return;
-
-        this.inventoryIcons.setVisible(Date.now() > nextCanShoot);
-
-        (this.inventoryIcons.list as DiceSprite[]).forEach((diceSprite, i) => {
-            if (!diceList[i]) {
-                diceSprite.setVisible(false);
-                return;
-            }
-            diceSprite.setVisible(true);
-            const { diceName, diceType, diceEnabled, sideId } = diceList[i];
-
-            (diceSprite
-                .setDiceName(diceName, diceType)
-                .setDiceEnabled(diceEnabled)
-                .updateDice()
-            );
-        });
     }
 
     updatePlayers(fixedTime: number, frameSize: number) {

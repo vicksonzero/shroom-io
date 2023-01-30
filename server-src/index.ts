@@ -8,17 +8,11 @@ import { USE_SSL, PORT_WSS, PORT_WS, PHYSICS_FRAME_SIZE } from './constants'
 import 'source-map-support/register'
 import * as Debug from 'debug';
 import { DebugInspectReturn, PongMessage } from '../model/EventsFromServer.js';
-import { Dice } from '../model/Dice.js';
 
 Debug.enable('shroom-io:*:log');
 const socketLog = Debug('shroom-io:Socket:log');
 
 
-
-if (!Dice.selfTestDefinitions()) {
-    console.log('Cannot start server due to data syntax errors. See error logs for details');
-    process.exit(1);
-}
 
 const io = (() => {
     if (USE_SSL) {
@@ -160,12 +154,6 @@ io.on("connection", (socket: Socket) => {
         const commands = {
             'dice': () => {
                 // eg: _debugInspectServer('cheat-dice', {diceString: 'WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE,WHITE'})
-                const { diceString } = data as CheatPlayerDiceMessage;
-                if (!/^[A-Z,_]+$/.test(diceString)) return;
-                game.cheatPlayerDice(socket.id, diceString);
-                socket.emit('debug-inspect-return', {
-                    msg: `cheat-${cmd} success`,
-                } as DebugInspectReturn);
             },
         };
         const command = Object.entries(commands).find(([key]) => key === cmd);

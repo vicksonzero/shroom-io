@@ -1,6 +1,5 @@
 import * as Debug from 'debug';
 import { PingMessage } from '../../model/EventsFromClient';
-import { Dice, DiceData, DiceSide, DiceType, Suit } from '../../model/Dice';
 import { MainScene } from '../scenes/MainScene';
 
 

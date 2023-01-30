@@ -14,6 +14,10 @@ export function preload(this: Phaser.Scene) {
     this.load.image('dice_empty', './assets/kenney_boardgameicons/dice_empty.png');
     this.load.image('circle', './assets/kenney_boardgameicons/circle.png');
     this.load.image('dice_detailed', './assets/kenney_boardgameicons/dice_detailed.png');
+    this.load.image('hexagon', './assets/kenney_boardgameicons/hexagon.png');
+    this.load.image('structure_house', './assets/kenney_boardgameicons/structure_house.png');
+    this.load.image('flag_triangle', './assets/kenney_boardgameicons/flag_triangle.png');
+    this.load.image('cards_take', './assets/kenney_boardgameicons/cards_take.png');
 
     // suits
     this.load.image('sword', './assets/kenney_boardgameicons/sword.png');

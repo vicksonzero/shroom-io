@@ -1,0 +1,28 @@
+config:
+  controls:
+    swipeThumbSize: 30
+    minSwipeDist: 50
+    directionSnaps: 4
+
+    # allowPickUpItems: true
+    # allowDropItems: true
+    # allowHandFeedItemsIntoTanks: true
+
+  credits:
+    - title: Programming
+      names:
+        - Dickson Chui
+    - title: Graphics
+      names:
+        - Kenney.nl (Once again!)
+    - title: Sound
+      names:
+        - https://freesound.org/people/Raclure/sounds/458867/ (CC0, but did not make it into the final game...)
+    - title: Testers & Community
+      names:
+        - names here
+
+
+
+
+

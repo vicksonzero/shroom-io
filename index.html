@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Shroom-IO</title>
+    <style type="text/css">
+        body {
+            background: #000000;
+            padding: 0px;
+            margin: 0px;
+        }
+
+        #game {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .overlay-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .overlay-box {
+            width: 500px;
+            max-width: 100%;
+            height: 200px;
+            max-height: 100%;
+            background-color: #fffffff4;
+            text-align: center;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px;
+            min-width: 100px;
+        }
+    </style>
+    <script src="bundle.js"></script>
+</head>
+
+<body>
+    <div id="game"></div>
+    <div id="title-screen" class="overlay-screen">
+        <div class="overlay-box">
+            <form class="form">
+                <h1>Dickson's Shroom-io</h1>
+                <p>
+                    <label for="name">Name: </label>
+                    <input type="text" name="name" id="player-name">
+                </p>
+                <p>
+                    <label for="is-tutorial-enabled">
+                        <input type="checkbox" name="is-tutorial-enabled" id="is-tutorial-enabled" checked>
+                        With tutorial
+                    </label>
+                </p>
+                <p> <input type="button" value="Start" id="start-game" class="btn"></p>
+            </form>
+        </div>
+    </div>
+    <div id="disconnected-screen" class="overlay-screen hidden">
+        <div class="overlay-box">
+            <form class="form">
+                <h2>Disconnected from server</h2>
+                <p>
+                    Please refresh to retry
+                </p>
+                <p> <input type="button" value="Refresh browser" class="btn"
+                        onclick="javascript:window.location.reload()"></p>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

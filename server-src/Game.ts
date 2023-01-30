@@ -9,7 +9,7 @@ import * as Debug from 'debug';
 import { IFixtureUserData, IBodyUserData } from '../client-src/PhysicsSystem';
 import { Player } from './Player';
 import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
-import { PlayerState, StateMessage } from '../model/EventsFromServer';
+import { EVT_PLAYER_DISCONNECTED, PlayerState, StateMessage } from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
 import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
@@ -104,7 +104,7 @@ export class Game {
 
         spawnLog(`Deleted player ${leavingPlayer.entityId}`);
 
-        this.emitToAll('player-disconnected', { playerId: leavingPlayer.entityId });
+        this.emitToAll(EVT_PLAYER_DISCONNECTED, { playerId: leavingPlayer.entityId });
         return leavingPlayer;
     }
 

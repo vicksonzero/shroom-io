@@ -3,11 +3,11 @@ import { createServer } from "https";
 import { Server, Socket } from "socket.io"
 import { readFileSync } from 'fs'
 import { Game } from './Game.js'
-import { CheatPlayerDiceMessage, DashMessage, DebugInspectMessage, DropDiceMessage, PingMessage, StartMessage } from '../model/EventsFromClient'
+import { CMD_CHEAT, CMD_CREATE_NODE, CMD_DEBUG_INSPECT, CMD_IO_DISCONNECT, CMD_PING, CMD_START, CreateNodeMessage, DebugInspectMessage, PingMessage, StartMessage } from '../model/EventsFromClient'
 import { USE_SSL, PORT_WSS, PORT_WS, PHYSICS_FRAME_SIZE } from './constants'
 import 'source-map-support/register'
 import * as Debug from 'debug';
-import { DebugInspectReturn, PongMessage } from '../model/EventsFromServer.js';
+import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_PONG, EVT_STATE, EVT_WELCOME, PongMessage } from '../model/EventsFromServer.js';
 
 Debug.enable('shroom-io:*:log');
 const socketLog = Debug('shroom-io:Socket:log');
@@ -66,73 +66,64 @@ io.on("connection", (socket: Socket) => {
         const playerStateList = game.getViewForPlayer(socket.id, isFullState);
         // console.log(`Socket sendState. (${players?.length})`);
         if (playerStateList && playerStateList.state.length > 0) {
-            socket.emit('state', playerStateList);
+            socket.emit(EVT_STATE, playerStateList);
         }
     };
 
     const interval = setInterval(() => sendState(true), 1000);
     const interval2 = setInterval(sendState, 50);
 
-    socket.on("start", (data: StartMessage) => {
+    socket.on(CMD_START, (data: StartMessage) => {
         const { name } = data;
         socketLog(`Socket player start. name=${name}`);
 
         game.onPlayerConnected(name, socket.id);
 
-        socket.emit('welcome');
+        socket.emit(EVT_WELCOME);
         sendState(true);
     });
 
-    socket.on("disconnect", () => {
+    socket.on(CMD_IO_DISCONNECT, () => {
         socketLog(`Socket disconnected. (id=${socket.id})`);
         game.onPlayerDisconnected(socket.id);
         clearInterval(interval);
         clearInterval(interval2);
     });
 
-    socket.on("dash", (data: DashMessage) => {
-        const { dashVector } = data;
-        // socketLog(`Socket dash. (${dashVector.x}, ${dashVector.y})`);
-        game.onPlayerDash(socket.id, dashVector);
+
+    socket.on(CMD_CREATE_NODE, (data: CreateNodeMessage) => {
         sendState();
     });
 
-    socket.on("drop-dice", (data: DropDiceMessage) => {
-        const { slotId } = data;
-        socketLog(`Socket drop-dice. (${slotId})`);
-        game.onPlayerDropDice(socket.id, slotId);
-        sendState();
+    socket.on(CMD_PING, ({ id }: PingMessage) => {
+        socket.volatile.emit(EVT_PONG, { pingId: id, serverTimestamp: Date.now() } as PongMessage);
     });
 
-    socket.on("ping", ({ id }: PingMessage) => {
-        socket.volatile.emit('pong', { pingId: id, serverTimestamp: Date.now() } as PongMessage);
-    });
-
-    socket.on('debug-inspect', ({ cmd }: DebugInspectMessage) => {
+    socket.on(CMD_DEBUG_INSPECT, ({ cmd }: DebugInspectMessage) => {
         socketLog(`Socket debug-inspect (cmd=${cmd})`);
 
         const commands = {
             'entity-list': () => {
-                socket.emit('debug-inspect-return', {
+                socket.emit(EVT_DEBUG_INSPECT_RETURN, {
                     msg: `entity-list`,
                     data: game.getEntityList(),
                 } as DebugInspectReturn);
             },
             'entity-data': () => {
-                socket.emit('debug-inspect-return', {
+                socket.emit(EVT_DEBUG_INSPECT_RETURN, {
                     msg: `entity-data`,
                     data: game.getEntityData(socket.id),
                 } as DebugInspectReturn);
             },
             'body-data': () => {
-                socket.emit('debug-inspect-return', {
+                socket.emit(EVT_DEBUG_INSPECT_RETURN, {
                     msg: `body-data`,
                     data: game.getBodyData(),
                 } as DebugInspectReturn);
             },
 
             'help': () => {
-                socket.emit('debug-inspect-return', {
+                socket.emit(EVT_DEBUG_INSPECT_RETURN, {
                     msg: `Command list:`,
                     data: Object.keys(commands),
                 } as DebugInspectReturn);
@@ -143,11 +134,12 @@ io.on("connection", (socket: Socket) => {
         if (!command) {
             socket.emit('debug-inspect-return', { msg: `unknown cmd: ${cmd}` } as DebugInspectReturn);
         } else {
-            command[1]();
+            const [_, callback] = command;
+            callback();
         }
     });
 
-    socket.on('cheat', (data: DebugInspectMessage) => {
+    socket.on(CMD_CHEAT, (data: DebugInspectMessage) => {
         const { cmd } = data;
         socketLog(`Socket cheat (cmd=${cmd})`);
 

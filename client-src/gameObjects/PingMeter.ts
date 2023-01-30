@@ -79,7 +79,7 @@ export class PingMeter extends Phaser.GameObjects.Container {
                 this.pingHistory.reduce((a, b) => (a + b), 0)
                 / this.pingHistory.length
             );
-            this.label.setText(`${this.ping.toFixed(0)}(${this.avgPing.toFixed(0)})`);
+            this.label.setText(`Ping: ${this.ping.toFixed(0)}(avg:${this.avgPing.toFixed(0)})`);
             this.pongMissCount = -1;
             this.serverTimestamp = serverTimestamp;
         }

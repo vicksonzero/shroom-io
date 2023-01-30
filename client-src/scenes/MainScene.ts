@@ -29,8 +29,8 @@ import { DistanceMatrix } from '../../utils/DistanceMatrix';
 import { capitalize, lerpRadians } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
-import { DebugInspectReturn, PlayerState, PongMessage, StateMessage } from '../../model/EventsFromServer';
-import { StartMessage } from '../../model/EventsFromClient';
+import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PlayerState, PongMessage, StateMessage } from '../../model/EventsFromServer';
+import { CMD_CHEAT, CMD_PING, CMD_START, StartMessage } from '../../model/EventsFromClient';
 
 
 type BaseSound = Phaser.Sound.BaseSound;
@@ -134,33 +134,33 @@ export class MainScene extends Phaser.Scene {
             // }
         });
 
-        this.socket.on('connect', () => {
+        this.socket.on(EVT_IO_CONNECT, () => {
             socketLog(`Socket connected. id is ${this.socket.id}`);
             this.startButton.value = 'Start';
             reconnectionCounts = 0;
         });
-        this.socket.on('connect_error', () => {
+        this.socket.on(EVT_IO_CONNECT_ERROR, () => {
             socketLog(`Socket connection error`);
             this.startButton.value = 'Socket Error';
         });
-        this.socket.on('disconnect', () => {
+        this.socket.on(EVT_IO_DISCONNECT, () => {
             socketLog(`Socket disconnected`);
             this.startButton.value = 'Disconnected';
             if (this.startScreen.classList.contains('hidden')) {
                 this.disconnectedScreen.classList.remove('hidden');
             }
         });
-        this.socket.io.on("reconnect", () => {
+        this.socket.io.on(EVT_IO_RECONNECT, () => {
             socketLog(`Socket reconnected`);
             reconnectionCounts = 0;
             // don't re-enter the game, unless client side can clean up old state
         });
-        this.socket.io.on("reconnect_attempt", () => {
+        this.socket.io.on(EVT_IO_RECONNECT_ATTEMPT, () => {
             socketLog(`Socket reconnecting...`);
             reconnectionCounts++;
             this.startButton.value = `Reconnecting (${reconnectionCounts})...`;
         });
-        this.socket.on('welcome', (playerStateList?: StateMessage) => {
+        this.socket.on(EVT_WELCOME, (playerStateList?: StateMessage) => {
             socketLog(`Socket welcome`);
             this.input.keyboard.enabled = true;
             this.input.keyboard.enableGlobalCapture();
@@ -172,12 +172,12 @@ export class MainScene extends Phaser.Scene {
             // this.socket.emit('dash', { dashVector: { x: 10, y: 1 } });
             (window as any).socketT = this.socket;
         });
-        this.socket.on('state', (playerStateList: StateMessage) => {
+        this.socket.on(EVT_STATE, (playerStateList: StateMessage) => {
             const entityIdList = playerStateList.state.map(p => p.entityId).join(', ');
             socketLog(`Socket state (${playerStateList.state.length}) [${entityIdList}]`);
             this.handlePlayerStateList(playerStateList);
         });
-        this.socket.on('player-disconnected', (data) => {
+        this.socket.on(EVT_PLAYER_DISCONNECTED, (data) => {
             const { playerId } = data;
             const leavingPlayer = this.entityList[playerId];
             if (leavingPlayer == null) {
@@ -191,16 +191,16 @@ export class MainScene extends Phaser.Scene {
         });
 
         this.socket.onAny((event, ...args) => {
-            if (event == 'state') return;
-            if (event == 'debug-inspect-return') return;
+            if (event == EVT_STATE) return;
+            if (event == EVT_DEBUG_INSPECT_RETURN) return;
             socketLog(`event ${event}`, ...args);
         });
 
-        this.socket.on('debug-inspect-return', ({ msg, data }: DebugInspectReturn) => {
-            console.log('debug-inspect-return', msg, data);
+        this.socket.on(EVT_DEBUG_INSPECT_RETURN, ({ msg, data }: DebugInspectReturn) => {
+            console.log('EVT_DEBUG_INSPECT_RETURN', msg, data);
         });
 
-        this.socket.on('pong', ({ pingId, serverTimestamp }: PongMessage) => {
+        this.socket.on(EVT_PONG, ({ pingId, serverTimestamp }: PongMessage) => {
             this.pingMeter?.onPong(pingId, serverTimestamp);
         });
     }
@@ -340,7 +340,7 @@ export class MainScene extends Phaser.Scene {
         this.startButton = document.querySelector('#start-game')!;
         const submitNameToServer = () => {
             const name = (document.querySelector('input#player-name')! as HTMLInputElement).value;
-            this.socket.emit('start', { name } as StartMessage);
+            this.socket.emit(CMD_START, { name } as StartMessage);
         };
 
         this.startButton.onclick = submitNameToServer;
@@ -360,7 +360,7 @@ export class MainScene extends Phaser.Scene {
         this.pingMeter = new PingMeter(this).createSprite();
         this.pingMeter.setPosition(CAMERA_WIDTH, 0);
         this.pingMeter.emitSocket = (data) => {
-            this.socket.volatile.emit('ping', data);
+            this.socket.volatile.emit(CMD_PING, data);
         };
 
         const clickRect = this.add.graphics();
@@ -405,7 +405,7 @@ export class MainScene extends Phaser.Scene {
                 }
                 // console.log('pointerup', dashVector);
 
-                this.socket.emit('dash', { dashVector });
+                // this.socket.emit('dash', { dashVector });
             });
     }
 
@@ -413,7 +413,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     setUpConsoleCheat() {
-        // const w = (window as any);
+        const w = (window as any);
         // w._debugToggleEntityId = () => {
         //     let val: boolean | null = null;
         //     Object.values(this.entityList).forEach(player => {
@@ -424,18 +424,18 @@ export class MainScene extends Phaser.Scene {
 
         // w._debugInspectServer = (cmd: string, params?: any) => {
         //     if (cmd.startsWith('cheat')) {
-        //         this.socket.emit('cheat', {
+        //        this.socket.emit(CMD_CHEAT, {
         //             cmd: cmd.replace('cheat-', ''),
         //             ...params,
         //         });
         //     } else {
-        //         this.socket.emit('debug-inspect', { cmd });
+        //         this.socket.emit(CMD_DEBUG_INSPECT, { cmd });
         //     }
         // };
 
-        // w._debugToggleSocketLogs = () => {
-        //     socketLog.enabled = !socketLog.enabled;
-        // };
+        w._debugToggleSocketLogs = () => {
+            socketLog.enabled = !socketLog.enabled;
+        };
     }
 
     createInventoryUi() {

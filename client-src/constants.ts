@@ -31,5 +31,5 @@ export const AUDIO_START_MUTED = true; // default false
 export const PHYSICS_FRAME_SIZE = 16; // ms
 export const PHYSICS_ALLOW_SLEEPING = false; // default false
 export const PHYSICS_MAX_FRAME_CATCHUP = 10; // times, default 10 times (10*16 = 160ms)
-export const WS_URL = "wss://gmtk2022.dickson.md";
+export const WS_URL = "wss://ggj2023.dickson.md";
 // export const WS_URL = localStorage.getItem('md.dickson.ws_url') || 'ws://localhost:3000'

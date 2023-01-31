@@ -345,7 +345,7 @@ export class Game {
             const player = this.players.find(p => p.entityId === node.playerEntityId);
             if (!player) continue;
 
-            this.transferMaterials(resource, player, 10, 0, this.fixedElapsedTime, 2000);
+            this.transferMaterials(resource, node, 10, 0, this.fixedElapsedTime, 2000);
 
         }
     }
@@ -372,7 +372,13 @@ export class Game {
 
             if (fromFixedTime + timeLength > this.fixedElapsedTime) break;
 
-            const toEntity = packetReceivers.find(e => e.entityId === toEntityId);
+            let toEntity = packetReceivers.find(e => e.entityId === toEntityId);
+            if (toEntity == null) continue;
+
+            if (toEntity instanceof Node) {
+                const node = toEntity as Node;
+                toEntity = this.players.find(p => p.entityId == node.playerEntityId);
+            }
             if (toEntity == null) continue;
 
             toEntity.mineralAmount += mineralAmount;
@@ -391,7 +397,7 @@ export class Game {
     }
 
     transferMaterials(fromEntity: Player | Node | Resource, toEntity: Player | Node, mineralAmount: number, ammoAmount: number, fromFixedTime: number, timeLength: number): boolean {
-        const entityId= getUniqueID();
+        const entityId = getUniqueID();
         log(`transferMaterials ${entityId}(${fromEntity.entityId} to ${toEntity.entityId}, amount=${mineralAmount}/${ammoAmount})`);
 
         if (fromEntity.mineralAmount < mineralAmount) return false;

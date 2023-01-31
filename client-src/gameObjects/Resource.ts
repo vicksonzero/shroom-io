@@ -5,12 +5,12 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { getPhysicsDefinitions, INodeState } from '../../model/Node';
+import { getPhysicsDefinitions, IResourceState } from '../../model/Resource';
 import { lerpRadians } from '../../utils/utils';
 
 
-const log = Debug('shroom-io:Node:log');
-// const warn = Debug('shroom-io:Node:warn');
+const log = Debug('shroom-io:Resource:log');
+// const warn = Debug('shroom-io:Resource:warn');
 // warn.log = console.warn.bind(console);
 
 type Image = Phaser.GameObjects.Image;
@@ -19,13 +19,13 @@ type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
 
-export class Node extends Phaser.GameObjects.Container {
+export class Resource extends Phaser.GameObjects.Container {
     // entity
     scene: MainScene;
     uniqueID: number;
     entityId: number;
-    playerId: number;
-    parentNodeId: number;
+
+    amount: number;
 
     // player info
     tint: number;
@@ -38,7 +38,8 @@ export class Node extends Phaser.GameObjects.Container {
     nameTag: Text;
     diceCountIcon: Image;
     diceCountLabel: Text;
-    bodySprite: Image;
+    bodySprites: Image[];
+    baseGraphics: Graphics;
 
     fixtureDef?: b2FixtureDef;
     bodyDef?: b2BodyDef;
@@ -58,11 +59,42 @@ export class Node extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
-        this.add([
-            this.bodySprite = this.scene.make.image({
+        this.bodySprites = [
+            this.scene.make.image({ // 0
                 x: 0, y: 0,
-                key: 'hexagon',
+                key: 'mineral1',
             }, false),
+            this.scene.make.image({ // 1
+                x: -10, y: -3,
+                key: 'mineral1',
+            }, false).setAngle(-14),
+            this.scene.make.image({ // 2
+                x: 5, y: -7,
+                key: 'mineral1',
+            }, false).setAngle(10),
+            this.scene.make.image({ // 3
+                x: 10, y: -2,
+                key: 'mineral1',
+            }, false).setAngle(20),
+            this.scene.make.image({ // 4
+                x: -2, y: -15,
+                key: 'mineral1',
+            }, false).setAngle(-3),
+        ];
+        for (const sprite of this.bodySprites) {
+            // sprite.setTint(this.tint);
+            sprite.setScale(1);
+        }
+
+        this.add([
+            this.baseGraphics = this.scene.make.graphics({
+                x: 0, y: 0
+            }, false),
+            this.bodySprites[4],
+            this.bodySprites[2],
+            this.bodySprites[3],
+            this.bodySprites[1],
+            this.bodySprites[0],
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
                 text: '',
@@ -74,28 +106,22 @@ export class Node extends Phaser.GameObjects.Container {
             //     style: { align: 'left', color: '#000000' },
             // }),
         ]);
-        this.bodySprite.setTint(this.tint);
-        this.bodySprite.setScale(0.6);
 
         this.nameTag.setOrigin(0.5, 1);
     }
 
-    init(state: INodeState): this {
-        const { entityId, x, y, r, parentNodeId, playerEntityId: playerId } = state;
+    init(state: IResourceState): this {
+        const { entityId, x, y, r, amount } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
         this.setPosition(x, y);
         this.r = r;
 
-        const isControlling = false;
-        const color = 0; // TODO: playerId;
-        if (color) {
-            this.tint = color;
-            this.bodySprite.setTint(this.tint);
-        }
-
-        this.setName(`Node ${this.entityId} (of ${playerId}) ${isControlling ? '(Me)' : ''}`);
+        this.baseGraphics.clear();
+        this.baseGraphics.fillStyle(0xc728a7, 0.8);
+        this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * 0.7);
+        this.setName(`Resource (${amount})`);
 
         return this;
     }
@@ -139,11 +165,7 @@ export class Node extends Phaser.GameObjects.Container {
             x, y,
         } = this.syncData;
 
-        const smoothCap = 1000;// SMOOTH_CAP;
-        this.setPosition(
-            this.x + Math.max(-smoothCap, this.x),
-            this.y + Math.max(-smoothCap, this.y),
-        ); // TODO: lerp instead of set
+        this.setPosition(x, y,);
 
 
         // this.debugText?.setText(this.isControlling ? `(${x.toFixed(1)}, ${y.toFixed(1)})` : '');
@@ -154,33 +176,30 @@ export class Node extends Phaser.GameObjects.Container {
         // this.hpBar.setPosition(this.x, this.y);
     }
 
-    applyState(state: INodeState, dt: number, isSmooth = true) {
+    applyState(state: IResourceState, dt: number, isSmooth = true) {
         const {
             x, y,
             entityId,
-            playerEntityId: playerId,
-            parentNodeId,
+            amount,
         } = state;
-
 
         this.syncData = {
             x, y,
         };
 
         this.entityId = entityId;
-        this.playerId = playerId;
-        this.parentNodeId = parentNodeId;
+        this.amount = amount;
 
-        if (!isSmooth) {
-            this.x = x;
-            this.y = y;
+        this.bodySprites[0].setVisible(this.amount > 0);
+        this.bodySprites[1].setVisible(this.amount > 100);
+        this.bodySprites[2].setVisible(this.amount > 250);
+        this.bodySprites[3].setVisible(this.amount > 500);
+        this.bodySprites[4].setVisible(this.amount > 1000);
 
-        } else {
-            this.setPosition(
-                this.x,
-                this.y,
-            ); // TODO: lerp instead of set
-        }
+        this.setPosition(
+            x,
+            y,
+        );
 
         this.nameTag.setText(this.name);
 

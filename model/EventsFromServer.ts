@@ -1,5 +1,6 @@
 import { XY } from "@flyover/box2d";
 import { IPlayerState } from "./Player";
+import { IResourceState } from "./Resource";
 
 // socket.io events
 export const EVT_IO_CONNECT = 'connect';
@@ -16,7 +17,8 @@ export const EVT_PLAYER_DISCONNECTED = 'EVT_PLAYER_DISCONNECTED';
 export const EVT_STATE = 'EVT_STATE';
 export type StateMessage = {
     tick: number;
-    state: Array<IPlayerState>
+    playerStates: IPlayerState[];
+    resourceStates: IResourceState[];
 };
 
 export const EVT_DEBUG_INSPECT_RETURN = 'EVT_DEBUG_INSPECT_RETURN';

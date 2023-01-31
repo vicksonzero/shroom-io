@@ -218,3 +218,8 @@ Forts holds mostly green dice, plus dice sacrificed from players.
      - just turned off rotating dice and buff containers
 
 
+# Credits
+
+- Kenney.nl (again, for hopefully placeholders only this time)!!!
+- https://free-game-assets.itch.io/48-free-minerals-pixel-art-icons-pack
+

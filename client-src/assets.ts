@@ -19,16 +19,7 @@ export function preload(this: Phaser.Scene) {
     this.load.image('flag_triangle', './assets/kenney_boardgameicons/flag_triangle.png');
     this.load.image('cards_take', './assets/kenney_boardgameicons/cards_take.png');
 
-    // suits
-    this.load.image('sword', './assets/kenney_boardgameicons/sword.png');
-    this.load.image('shield', './assets/kenney_boardgameicons/shield.png');
-    this.load.image('structure_tower', './assets/kenney_boardgameicons/structure_tower.png');
-    this.load.image('book_open', './assets/kenney_boardgameicons/book_open.png');
-    this.load.image('skull', './assets/kenney_boardgameicons/skull.png');
-    this.load.image('fastForward', './assets/kenney_boardgameicons/fastForward.png');
-    this.load.image('bow', './assets/kenney_boardgameicons/bow.png');
-    this.load.image('suit_hearts_broken', './assets/kenney_boardgameicons/suit_hearts_broken.png');
-    this.load.image('suit_hearts_broken', './assets/kenney_boardgameicons/suit_hearts_broken.png');
+    this.load.image('mineral1', './assets/craftpix/48 Free Minerals Pixel Art Icons Pack/Icon16.png');
 
 
     // this.load.atlas('items_icon',

@@ -9,6 +9,7 @@ import * as Debug from 'debug';
 import { IFixtureUserData, IBodyUserData } from '../client-src/PhysicsSystem';
 import { Player } from './Player';
 import { Node } from './Node';
+import { Resource } from './Resource';
 import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
 import { EVT_PLAYER_DISCONNECTED, StateMessage } from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
@@ -17,6 +18,7 @@ import { DistanceMatrix } from '../utils/DistanceMatrix'
 import { names } from '../model/Names'
 import { IPlayerState } from '../model/Player';
 import { INodeState } from '../model/Node';
+import { IResourceState } from '../model/Resource';
 
 
 const verbose = Debug('shroom-io:Game:verbose');
@@ -29,6 +31,7 @@ const inventoryLog = Debug('shroom-io:Game.inventory:log');
 export class Game {
     public players: Player[] = [];
     public nodes: Node[] = [];
+    public resources: Resource[] = [];
     sfx_point: any;
 
     frameSize = PHYSICS_FRAME_SIZE; // ms
@@ -51,9 +54,13 @@ export class Game {
 
     init() {
         this.setUpPhysics();
+        for (let i = 0; i < 20; i++) {
+            this.spawnResource();
+        }
         for (let i = 0; i < 10; i++) {
             const player = this.spawnNpc();
         }
+
     }
 
     getPlayerById(socketId: string) {
@@ -68,6 +75,31 @@ export class Game {
         return this.getPlayerById(socketId) != null;
     }
 
+    getRandomPosition(minXY: XY, maxXY: XY, clearRadius: number, avoidObjectList: { x: number, y: number, r: number }[]): XY {
+        const result = { x: 0, y: 0 };
+
+        for (let i = 0; i < 100; i++) {
+            result.x = Math.random() * (maxXY.x - minXY.x) + minXY.x;
+            result.y = Math.random() * (maxXY.y - minXY.y) + minXY.y;
+
+            // TODO: use distance matrix and/or box2d world query
+            const hasCollision = avoidObjectList.some(({ x, y, r }) => {
+                const dx = result.x - x;
+                const dy = result.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                return distance < (clearRadius + r);
+            })
+
+            if (!hasCollision) {
+                return result;
+            }
+        }
+
+        return result;
+
+
+    }
 
 
     randomizePlayerPosition(player: Player) {
@@ -149,9 +181,12 @@ export class Game {
             })
         );
 
+        const resourceStates = this.resources.map(resource => resource.toStateObject());
+
         return {
             tick: Date.now(),
-            state,
+            playerStates: state,
+            resourceStates,
         };
     }
 
@@ -258,6 +293,26 @@ export class Game {
 
         return node;
 
+    }
+    spawnResource() {
+        log('spawnResource');
+
+        const padding = SPAWN_PADDING;
+        const { x, y } = this.getRandomPosition(
+            { x: padding, y: padding },
+            { x: WORLD_WIDTH - padding, y: WORLD_HEIGHT - padding },
+            400,
+            this.resources
+        );
+
+        log(`spawnResource at (${x}, ${y})`);
+        const resource = Resource.create(500);
+        if (resource) this.resources.push(resource);
+        resource.x = x;
+        resource.y = y;
+        resource.createPhysics(this.physicsSystem, () => { });
+
+        return resource;
     }
 
     updatePlayers() {

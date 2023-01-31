@@ -65,7 +65,7 @@ io.on("connection", (socket: Socket) => {
     const sendState = (isFullState = false) => {
         const playerStateList = game.getViewForPlayer(socket.id, isFullState);
         // console.log(`Socket sendState. (${players?.length})`);
-        if (playerStateList && playerStateList.state.length > 0) {
+        if (playerStateList && playerStateList.playerStates.length > 0) {
             socket.emit(EVT_STATE, playerStateList);
         }
     };

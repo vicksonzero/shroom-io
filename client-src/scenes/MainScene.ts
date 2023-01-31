@@ -23,6 +23,7 @@ import {
 // import { Immutable } from '../utils/ImmutableType';
 import { Player } from '../gameObjects/Player';
 import { Node } from '../gameObjects/Node';
+import { Resource } from '../gameObjects/Resource';
 import { NodeBuilder } from '../gameObjects/NodeBuilder';
 import { PingMeter } from '../gameObjects/PingMeter';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
@@ -35,6 +36,7 @@ import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CO
 import { CMD_CHEAT, CMD_CREATE_NODE, CMD_PING, CMD_START, CreateNodeMessage, StartMessage } from '../../model/EventsFromClient';
 import { IPlayerState } from '../../model/Player';
 import { INodeState } from '../../model/Node';
+import { IResourceState } from '../../model/Resource';
 
 
 
@@ -76,7 +78,7 @@ export class MainScene extends Phaser.Scene {
     lastUpdate = -1;
     lastUpdateTick = Date.now();
 
-    entityList: { [x: number]: Player | Node } = {};
+    entityList: { [x: number]: Player | Node | Resource } = {};
 
     backgroundUILayer: Container;
     factoryLayer: Container;
@@ -179,10 +181,10 @@ export class MainScene extends Phaser.Scene {
             // this.socket.emit('dash', { dashVector: { x: 10, y: 1 } });
             (window as any).socketT = this.socket;
         });
-        this.socket.on(EVT_STATE, (playerStateList: StateMessage) => {
-            const entityIdList = playerStateList.state.map(p => p.entityId).join(', ');
-            socketLog(`Socket state (${playerStateList.state.length}) [${entityIdList}]`);
-            this.handlePlayerStateList(playerStateList);
+        this.socket.on(EVT_STATE, (stateMessage: StateMessage) => {
+            const entityIdList = stateMessage.playerStates.map(p => p.entityId).join(', ');
+            socketLog(`Socket state (${stateMessage.playerStates.length}) [${entityIdList}]`);
+            this.handlePlayerStateList(stateMessage);
         });
         this.socket.on(EVT_PLAYER_DISCONNECTED, (data) => {
             const { playerId } = data;
@@ -631,11 +633,22 @@ export class MainScene extends Phaser.Scene {
         return this.nodeBuilder;
     }
 
-    handlePlayerStateList(playerStateList: StateMessage) {
-        const { tick, state } = playerStateList;
+    spawnResource(resourceState: IResourceState) {
+        const resource = new Resource(this);
+
+        console.log(`spawnResource ${JSON.stringify(resourceState)})`);
+
+        this.playerLayer.add(resource);
+        resource.init(resourceState).initPhysics();
+
+        return resource;
+    }
+
+    handlePlayerStateList(stateMessage: StateMessage) {
+        const { tick, playerStates, resourceStates } = stateMessage;
 
         const dt = (tick - this.lastUpdateTick) / 1000;
-        for (const playerState of state) {
+        for (const playerState of playerStates) {
             const { entityId, isCtrl } = playerState;
             if (!this.entityList[entityId]) {
                 const player = this.entityList[entityId] = this.spawnPlayer(playerState);
@@ -679,6 +692,18 @@ export class MainScene extends Phaser.Scene {
                     const node = this.entityList[entityId] as Node;
                     node.applyState(nodeState, dt, false);
                 }
+            }
+        }
+
+        for (const resourceState of resourceStates) {
+            const { entityId } = resourceState;
+            if (!this.entityList[entityId]) {
+                // spawn node
+                const resource = this.entityList[entityId] = this.spawnResource(resourceState);
+            } else {
+                // update node state
+                const resource = this.entityList[entityId] as Resource;
+                resource.applyState(resourceState, dt, false);
             }
         }
         this.lastUpdateTick = tick;

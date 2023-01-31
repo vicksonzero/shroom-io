@@ -21,11 +21,6 @@ import {
     WS_URL,
 } from '../constants';
 // import { Immutable } from '../utils/ImmutableType';
-import { Player } from '../gameObjects/Player';
-import { Node } from '../gameObjects/Node';
-import { Resource } from '../gameObjects/Resource';
-import { NodeBuilder } from '../gameObjects/NodeBuilder';
-import { PingMeter } from '../gameObjects/PingMeter';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
 // import { GameObjects } from 'phaser';
@@ -37,7 +32,14 @@ import { CMD_CHEAT, CMD_CREATE_NODE, CMD_PING, CMD_START, CreateNodeMessage, Sta
 import { IPlayerState } from '../../model/Player';
 import { INodeState } from '../../model/Node';
 import { IResourceState } from '../../model/Resource';
+import { IPacketState } from '../../model/Packet';
 
+import { NodeBuilder } from '../gameObjects/NodeBuilder';
+import { Player } from '../gameObjects/Player';
+import { Node } from '../gameObjects/Node';
+import { Resource } from '../gameObjects/Resource';
+import { PacketEffect } from '../gameObjects/PacketEffect';
+import { PingMeter } from '../gameObjects/PingMeter';
 
 
 type BaseSound = Phaser.Sound.BaseSound;
@@ -58,8 +60,8 @@ const verbose = Debug('shroom-io:MainScene:verbose');
 const log = Debug('shroom-io:MainScene:log');
 const socketLog = Debug('shroom-io:MainScene.socket:log');
 socketLog.log = console.log.bind(console);
-// const warn = Debug('shroom-io:MainScene:warn');
-// warn.log = console.warn.bind(console);
+const warn = Debug('shroom-io:MainScene:warn');
+warn.log = console.warn.bind(console);
 
 
 export type Controls = { up: Key, down: Key, left: Key, right: Key, action: Key };
@@ -79,6 +81,7 @@ export class MainScene extends Phaser.Scene {
     lastUpdateTick = Date.now();
 
     entityList: { [x: number]: Player | Node | Resource } = {};
+    effectEntityList: { [x: number]: PacketEffect } = {};
 
     backgroundUILayer: Container;
     factoryLayer: Container;
@@ -241,7 +244,6 @@ export class MainScene extends Phaser.Scene {
         this.manualLayer = this.add.container(0, 0);
 
 
-
         // this.fixedTime.addEvent({
         //     delay: SPAWN_DELAY,
         //     callback: () => {
@@ -310,11 +312,7 @@ export class MainScene extends Phaser.Scene {
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         // this.distanceMatrix.init([this.bluePlayer, this.redPlayer, ...this.blueAi, ...this.redAi, ...this.items]);
-        for (const scoreLabel of (this.effectsLayer.list as Container[])) {
-            if (scoreLabel.name == 'roll-animation') {
-                scoreLabel.update();
-            }
-        }
+        this.updatePacketEffects(fixedTime, frameSize);
 
 
         this.fixedTime.update(fixedTime, frameSize);
@@ -440,13 +438,13 @@ export class MainScene extends Phaser.Scene {
 
     setUpConsoleCheat() {
         const w = (window as any);
-        // w._debugToggleEntityId = () => {
-        //     let val: boolean | null = null;
-        //     Object.values(this.entityList).forEach(player => {
-        //         if (val == null) val = !player._debugShowEntityId;;
-        //         player._debugShowEntityId = val;
-        //     })
-        // };
+        w._debugToggleEntityId = () => {
+            let val: boolean | null = null;
+            Object.values(this.entityList).forEach(player => {
+                if (val == null) val = !player._debugShowEntityId;;
+                player._debugShowEntityId = val;
+            })
+        };
 
         // w._debugInspectServer = (cmd: string, params?: any) => {
         //     if (cmd.startsWith('cheat')) {
@@ -511,6 +509,21 @@ export class MainScene extends Phaser.Scene {
         for (const entity of Object.values(this.entityList)) {
 
             entity.fixedUpdate(fixedTime, frameSize);
+        }
+    }
+
+    updatePacketEffects(fixedTime: number, frameSize: number) {
+        for (const [entityId, packetEffect] of Object.entries(this.effectEntityList)) {
+
+            const fromEntity = this.entityList[packetEffect.fromEntityId];
+            const toEntity = this.entityList[packetEffect.toEntityId];
+            const isInvalid = (
+                fromEntity == null ||
+                toEntity == null
+            );
+            if (!isInvalid) {
+                packetEffect.fixedUpdate(fixedTime, frameSize);
+            }
         }
     }
 
@@ -605,7 +618,7 @@ export class MainScene extends Phaser.Scene {
                 log('drag end');
             })
             .on('pointerup', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
-                console.log('nodebuilder pointerup');
+                console.log('nodeBuilder pointerup');
                 if (!this.nodeBuilder) return;
 
                 this.socket.emit(CMD_CREATE_NODE, {
@@ -626,7 +639,7 @@ export class MainScene extends Phaser.Scene {
 
 
         //     .on('pointerup', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
-        //         console.log('nodebuilder pointerdown');
+        //         console.log('nodeBuilder pointerdown');
         //         eventCtrl.stopPropagation();
         //     })
 
@@ -644,10 +657,22 @@ export class MainScene extends Phaser.Scene {
         return resource;
     }
 
+    spawnPacketEffect(packetState: IPacketState, fromEntity: Container, toEntity: Container) {
+        const packetEffect = new PacketEffect(this);
+
+        console.log(`spawnPacketEffect ${JSON.stringify(packetState)})`);
+
+        this.effectsLayer.add(packetEffect);
+        packetEffect.init(packetState, fromEntity, toEntity);
+
+        return packetEffect;
+    }
+
     handlePlayerStateList(stateMessage: StateMessage) {
-        const { tick, playerStates, resourceStates } = stateMessage;
+        const { tick, playerStates, resourceStates, packetStates } = stateMessage;
 
         const dt = (tick - this.lastUpdateTick) / 1000;
+        this.fixedElapsedTime = tick; // HACK: just forgetting lerping for a while
         for (const playerState of playerStates) {
             const { entityId, isCtrl } = playerState;
             if (!this.entityList[entityId]) {
@@ -706,6 +731,33 @@ export class MainScene extends Phaser.Scene {
                 resource.applyState(resourceState, dt, false);
             }
         }
+        console.log('packetStates', JSON.stringify(packetStates));
+
+        for (const packetState of packetStates) {
+            const { entityId, fromEntityId, toEntityId } = packetState;
+            if (!this.effectEntityList[entityId]) {
+                // spawn node
+                const fromEntity = this.entityList[fromEntityId];
+                const toEntity = this.entityList[toEntityId];
+                if (fromEntity == null ||
+                    toEntity == null) {
+                    warn(`Entity not found`, fromEntity, toEntity);
+                } else {
+                    this.effectEntityList[entityId] = this.spawnPacketEffect(packetState, fromEntity, toEntity);
+                }
+            }
+        }
+        const entityIds = packetStates.map(p => p.entityId);
+
+        for (const [entityId, packetEffect] of Object.entries(this.effectEntityList)) {
+            const isEnd = !entityIds.includes(packetEffect.entityId);
+            if (isEnd) {
+                log(`packetEffect-${packetEffect.entityId} isEnd`);
+                delete this.effectEntityList[packetEffect.entityId];
+                packetEffect.destroy();
+            }
+        }
+
         this.lastUpdateTick = tick;
     }
 

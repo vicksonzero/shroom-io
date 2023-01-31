@@ -9,6 +9,7 @@ import { Player } from './gameObjects/Player';
 
 
 const verbose = Debug('shroom-io:PhysicsSystem:verbose');
+verbose.enabled = false;
 const log = Debug('shroom-io:PhysicsSystem:log');
 // const warn = Debug('shroom-io:PhysicsSystem:warn');
 // warn.log = console.warn.bind(console);

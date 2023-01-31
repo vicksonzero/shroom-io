@@ -4,6 +4,8 @@ import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2FixtureDef, b2Vec2, b2W
 import { PIXEL_TO_METER } from "./constants.js";
 import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import * as Debug from 'debug';
+import { DistanceMatrix } from '../utils/DistanceMatrix';
+import { Resource } from './Resource';
 
 const verbose = Debug('shroom-io:Node:verbose');
 const log = Debug('shroom-io:Node:log');
@@ -46,6 +48,9 @@ export class Node {
     public bodyDef?: b2BodyDef;
     public b2Body?: b2Body;
 
+
+    public mineralAmount: number;
+    public ammoAmount: number;
     // ai
     public targetId: number;
     public aiNextTick: number = Date.now() + 2000;

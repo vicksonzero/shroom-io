@@ -9,6 +9,9 @@ export type INodeState = {
 
     playerEntityId: number,
     parentNodeId: number,
+
+    mineralAmount: number,
+    ammoAmount: number,
 };
 
 export const getPhysicsDefinitions = (radius: number) => {

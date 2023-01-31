@@ -1,4 +1,5 @@
 import { XY } from "@flyover/box2d";
+import { IPacketState } from "./Packet";
 import { IPlayerState } from "./Player";
 import { IResourceState } from "./Resource";
 
@@ -19,6 +20,7 @@ export type StateMessage = {
     tick: number;
     playerStates: IPlayerState[];
     resourceStates: IResourceState[];
+    packetStates: IPacketState[];
 };
 
 export const EVT_DEBUG_INSPECT_RETURN = 'EVT_DEBUG_INSPECT_RETURN';

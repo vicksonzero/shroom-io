@@ -7,7 +7,7 @@ export type IResourceState = {
     y: number,
     r: number,
 
-    amount: number,
+    mineralAmount: number,
 };
 
 export const getPhysicsDefinitions = (radius: number) => {

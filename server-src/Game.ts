@@ -19,12 +19,14 @@ import { names } from '../model/Names'
 import { IPlayerState } from '../model/Player';
 import { INodeState } from '../model/Node';
 import { IResourceState } from '../model/Resource';
+import { IPacketState } from '../model/Packet';
+import { getUniqueID } from '../model/UniqueID';
 
 
 const verbose = Debug('shroom-io:Game:verbose');
 const log = Debug('shroom-io:Game:log');
 const spawnLog = Debug('shroom-io:Game.spawn:log');
-const fightLog = Debug('shroom-io:Game.fight:log');
+const materialsLog = Debug('shroom-io:Game.materials:log');
 const aiLog = Debug('shroom-io:Game.ai:log');
 const inventoryLog = Debug('shroom-io:Game.inventory:log');
 
@@ -32,6 +34,7 @@ export class Game {
     public players: Player[] = [];
     public nodes: Node[] = [];
     public resources: Resource[] = [];
+    public packets: IPacketState[] = [];
     sfx_point: any;
 
     frameSize = PHYSICS_FRAME_SIZE; // ms
@@ -156,7 +159,7 @@ export class Game {
             return null;
         }
 
-        const state = (this.players
+        const playerStates = (this.players
             .filter(player => {
                 if (!player.b2Body) return false;
                 if (!isFullState && this.distanceMatrix.getDistanceBetween(existingPlayer, player) > 300) return false;
@@ -175,6 +178,8 @@ export class Game {
                     isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
                     nextMoveTick: player.nextMoveTick,
                     nextCanShoot: player.nextCanShoot,
+                    mineralAmount: player.mineralAmount,
+                    ammoAmount: player.ammoAmount,
 
                     nodes: this.getNodesByPlayerId(player.entityId).map(n => n.toStateObject()),
                 } as IPlayerState;
@@ -182,26 +187,22 @@ export class Game {
         );
 
         const resourceStates = this.resources.map(resource => resource.toStateObject());
+        const packetStates = this.packets.slice();
 
         return {
-            tick: Date.now(),
-            playerStates: state,
+            tick: this.fixedElapsedTime,
+            playerStates,
             resourceStates,
+            packetStates,
         };
     }
 
     onPlayerCreateNode(clientId: string, x: number, y: number, playerEntityId: number, parentNodeId: number) {
+        const player = this.getPlayerById(clientId);
         // TODO: do some checkings; reject some commands like too far or no money;
         // TODO: send some return message if not possible
 
-        const player = this.getPlayerById(clientId);
         this.spawnNode(x, y, playerEntityId, parentNodeId);
-    }
-
-    onPlayerDash(playerId: string, dashVector: XY) {
-    }
-
-    onPlayerDropDice(playerId: string, slotId: number) {
     }
 
     getEntityList() {
@@ -262,6 +263,8 @@ export class Game {
             // (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         this.distanceMatrix.init();
+        this.updatePackets();
+        this.updateNodes();
         this.updatePlayers();
 
         this.fixedTime.update(fixedTime, frameSize);
@@ -269,7 +272,7 @@ export class Game {
         // verbose(`fixedUpdate complete`);
     }
 
-    getTransformList = () => ([...this.players]);
+    getTransformList = () => ([...this.players, ...this.nodes, ...this.resources]);
 
     spawnNpc() {
         log('spawnNpc');
@@ -290,6 +293,7 @@ export class Game {
         node.x = x;
         node.y = y;
         node.createPhysics(this.physicsSystem, () => { });
+        this.distanceMatrix.insertTransform(node);
 
         return node;
 
@@ -311,11 +315,103 @@ export class Game {
         resource.x = x;
         resource.y = y;
         resource.createPhysics(this.physicsSystem, () => { });
+        this.distanceMatrix.insertTransform(resource);
 
         return resource;
     }
 
     updatePlayers() {
+
+    }
+
+    updateNodes() {
+        for (const node of this.nodes) {
+            if (node.nextCanShoot > Date.now()) continue;
+            node.nextCanShoot = Date.now() + 5000;
+
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
+
+            materialsLog(`updateNodes(node-${node.entityId}) closestEntities[${closestEntities.length}]`);
+
+            const resourceResult = closestEntities
+                .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
+                .find(([e, dist]) => e instanceof Resource);
+            if (!resourceResult) continue;
+
+            const [resource, dist] = resourceResult as [Resource, number];
+            materialsLog(`resourceResult r-${resource.entityId} dist=${dist}`);
+            if (dist > 100) continue;
+
+            const player = this.players.find(p => p.entityId === node.playerEntityId);
+            if (!player) continue;
+
+            this.transferMaterials(resource, player, 10, 0, this.fixedElapsedTime, 2000);
+
+        }
+    }
+
+    updatePackets() {
+        this.packets.sort((a, b) => a.fromFixedTime + a.timeLength - b.fromFixedTime - b.timeLength);
+
+        const packetReceivers = [
+            ...this.players,
+            ...this.nodes,
+        ];
+
+        for (const packet of this.packets) {
+            const {
+                fromEntityId,
+                toEntityId,
+
+                mineralAmount,
+                ammoAmount,
+
+                fromFixedTime,
+                timeLength,
+            } = packet;
+
+            if (fromFixedTime + timeLength > this.fixedElapsedTime) break;
+
+            const toEntity = packetReceivers.find(e => e.entityId === toEntityId);
+            if (toEntity == null) continue;
+
+            toEntity.mineralAmount += mineralAmount;
+            toEntity.ammoAmount += ammoAmount;
+
+            materialsLog(`updatePackets(${toEntityId}) min+${mineralAmount}=${toEntity.mineralAmount} ammo+${ammoAmount}=${toEntity.ammoAmount}`);
+        }
+
+        this.packets = this.packets.filter(p => (p.fromFixedTime + p.timeLength > this.fixedElapsedTime));
+    }
+
+    canTransferMaterials(fromEntity: Player | Node | Resource, toEntity: Player | Node, mineralAmount: number, ammoAmount: number) {
+        if (fromEntity.mineralAmount < mineralAmount) return 'Not enough minerals';
+        if (fromEntity.ammoAmount < ammoAmount) return 'Not enough ammo';
+        return null;
+    }
+
+    transferMaterials(fromEntity: Player | Node | Resource, toEntity: Player | Node, mineralAmount: number, ammoAmount: number, fromFixedTime: number, timeLength: number): boolean {
+        const entityId= getUniqueID();
+        log(`transferMaterials ${entityId}(${fromEntity.entityId} to ${toEntity.entityId}, amount=${mineralAmount}/${ammoAmount})`);
+
+        if (fromEntity.mineralAmount < mineralAmount) return false;
+        if (fromEntity.ammoAmount < ammoAmount) return false;
+
+        fromEntity.mineralAmount -= mineralAmount;
+        fromEntity.ammoAmount -= ammoAmount;
+
+        this.packets.push({
+            entityId,
+            fromEntityId: fromEntity.entityId,
+            toEntityId: toEntity.entityId,
+
+            mineralAmount,
+            ammoAmount,
+
+            fromFixedTime,
+            timeLength,
+        });
+        return true;
     }
 
     setUpPhysics() {

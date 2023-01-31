@@ -37,6 +37,9 @@ export class Player extends Phaser.GameObjects.Container {
     r: number; // radius
     nextCanShoot: number = 0;
 
+    mineralAmount = 0;
+    ammoAmount = 0;
+
     // sprites
     debugText?: Text;
     nameTag: Text;
@@ -169,8 +172,13 @@ export class Player extends Phaser.GameObjects.Container {
             name, color,
             isHuman, isCtrl,
             nextCanShoot,
+            mineralAmount,
+            ammoAmount,
         } = state;
 
+
+        this.mineralAmount = mineralAmount;
+        this.ammoAmount = ammoAmount;
 
         this.syncData = {
             dt,
@@ -196,8 +204,9 @@ export class Player extends Phaser.GameObjects.Container {
         this.isControlling = (isCtrl == null ? this.isControlling : isCtrl);
         this.setName(name);
 
+        const materialStr = `${this.mineralAmount}/${this.ammoAmount}`;
         const entityIdStr = this._debugShowEntityId ? ` (${this.entityId})` : ``;
-        this.nameTag.setText(`${name}${entityIdStr}`);
+        this.nameTag.setText(`${name} (${materialStr}) ${entityIdStr}`);
 
         // console.log(diceColors);
 

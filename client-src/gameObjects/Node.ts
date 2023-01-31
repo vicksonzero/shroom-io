@@ -182,7 +182,7 @@ export class Node extends Phaser.GameObjects.Container {
             ); // TODO: lerp instead of set
         }
 
-        this.nameTag.setText(this.name);
+        // this.nameTag.setText(this.name);
 
         // console.log(diceColors);
 

@@ -16,6 +16,9 @@ export type IPlayerState = {
     nextMoveTick?: number;
     nextCanShoot: number;
 
+    mineralAmount: number;
+    ammoAmount: number;
+
     nodes: INodeState[],
 }
 

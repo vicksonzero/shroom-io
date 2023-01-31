@@ -28,6 +28,9 @@ export class Player {
     public isHuman = false;
     public isControlling = false;
 
+    public mineralAmount: number = 10;
+    public ammoAmount: number = 0;
+
     // physics
     public x = 0;
     public y = 0;

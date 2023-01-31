@@ -29,7 +29,8 @@ export class Resource {
     public isHuman = false;
     public isControlling = false;
 
-    public amount: number;
+    public mineralAmount: number;
+    public ammoAmount: number = 0;
 
 
     // physics
@@ -53,10 +54,10 @@ export class Resource {
     constructor() {
         this.entityId = getUniqueID();
     }
-    static create(amount: number) {
+    static create(mineralAmount: number) {
         const result = new Resource();
         result.name = `Resource`;
-        result.amount = amount;
+        result.mineralAmount = mineralAmount;
 
         return result;
     }
@@ -106,7 +107,7 @@ export class Resource {
             y: this.y,
             r: this.r,
             entityId: this.entityId,
-            amount: this.amount,
+            mineralAmount: this.mineralAmount,
         } as IResourceState;
     }
 }

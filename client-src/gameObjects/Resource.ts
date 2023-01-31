@@ -111,7 +111,7 @@ export class Resource extends Phaser.GameObjects.Container {
     }
 
     init(state: IResourceState): this {
-        const { entityId, x, y, r, amount } = state;
+        const { entityId, x, y, r, mineralAmount } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
@@ -121,7 +121,6 @@ export class Resource extends Phaser.GameObjects.Container {
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(0xc728a7, 0.8);
         this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * 0.7);
-        this.setName(`Resource (${amount})`);
 
         return this;
     }
@@ -180,7 +179,7 @@ export class Resource extends Phaser.GameObjects.Container {
         const {
             x, y,
             entityId,
-            amount,
+            mineralAmount,
         } = state;
 
         this.syncData = {
@@ -188,7 +187,7 @@ export class Resource extends Phaser.GameObjects.Container {
         };
 
         this.entityId = entityId;
-        this.amount = amount;
+        this.amount = mineralAmount;
 
         this.bodySprites[0].setVisible(this.amount > 0);
         this.bodySprites[1].setVisible(this.amount > 100);
@@ -201,7 +200,7 @@ export class Resource extends Phaser.GameObjects.Container {
             y,
         );
 
-        this.nameTag.setText(this.name);
+        this.nameTag.setText(`Resource (${mineralAmount})`);
 
         // console.log(diceColors);
 

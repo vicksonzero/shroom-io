@@ -1,23 +1,15 @@
 import { b2FixtureDef, b2CircleShape, b2BodyDef, b2BodyType } from "@flyover/box2d";
 import { collisionCategory } from "../model/collisionCategory";
-import { INodeState } from "./Node";
 
+export type INodeState = {
+    entityId: number,
+    x: number,
+    y: number,
+    r: number,
 
-export type IPlayerState = {
-    entityId: number;
-    x: number;
-    y: number;
-    r: number; // physics radius
-
-    name: string;
-    color?: number;
-    isHuman?: boolean;
-    isCtrl?: boolean; // for the player receiving this state pack, is this Player themselves?
-    nextMoveTick?: number;
-    nextCanShoot: number;
-
-    nodes: INodeState[],
-}
+    playerEntityId: number,
+    parentNodeId: number,
+};
 
 export const getPhysicsDefinitions = (radius: number) => {
 
@@ -53,10 +45,6 @@ export const getPhysicsDefinitions = (radius: number) => {
 
     // dynamic(moving), static(walls) or kinematic(moving walls)
     bodyDef.type = b2BodyType.b2_staticBody;
-
-
-    bodyDef.linearDamping = 0.005;
-    bodyDef.angularDamping = 1;
 
     // sleeping disables physics when not moving.
     // troublesome to wake it back though

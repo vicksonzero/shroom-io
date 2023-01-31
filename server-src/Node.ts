@@ -1,16 +1,16 @@
-import { getPhysicsDefinitions } from '../model/Player';
+import { getPhysicsDefinitions, INodeState } from '../model/Node';
 import { getUniqueID } from '../model/UniqueID';
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2FixtureDef, b2Vec2, b2World, XY } from "@flyover/box2d";
 import { PIXEL_TO_METER } from "./constants.js";
 import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import * as Debug from 'debug';
 
-const verbose = Debug('shroom-io:Player:verbose');
-const log = Debug('shroom-io:Player:log');
+const verbose = Debug('shroom-io:Node:verbose');
+const log = Debug('shroom-io:Node:log');
 
 
 
-export class Player {
+export class Node {
     public entityId: number;
     public socketId = '';
     public nextMoveTick = 0;
@@ -27,12 +27,16 @@ export class Player {
     public color = 0xffffff;
     public isHuman = false;
     public isControlling = false;
+    public playerEntityId: number;
+    public parentNodeId: number;
+
+
 
     // physics
     public x = 0;
     public y = 0;
     public angle = 0;
-    public r = 24;
+    public r = 20;
     public friction = 0;
     public vx = 0;
     public vy = 0;
@@ -49,14 +53,12 @@ export class Player {
     constructor() {
         this.entityId = getUniqueID();
     }
-    static create(name: string, tier = 0, socketId?: string) {
-        const result = new Player();
-        result.name = name;
+    static create(playerId: number, parentNodeId: number) {
+        const result = new Node();
+        result.name = `Node of ${playerId}`;
 
-        if (socketId) {
-            result.socketId = socketId;
-            result.isHuman = true;
-        }
+        result.playerEntityId = playerId;
+        result.parentNodeId = parentNodeId;
 
         return result;
     }
@@ -68,12 +70,12 @@ export class Player {
         this.fixtureDef = fixtureDef;
 
         fixtureDef.userData = {
-            fixtureLabel: 'player',
+            fixtureLabel: 'node',
         } as IFixtureUserData;
 
         this.bodyDef = bodyDef;
         bodyDef.userData = {
-            label: 'player',
+            label: 'node',
             gameObject: this,
         };
 
@@ -98,5 +100,16 @@ export class Player {
 
         physicsSystem.scheduleDestroyBody(this.b2Body);
         this.b2Body.m_userData.gameObject = null;
+    }
+
+    toStateObject() {
+        return {
+            x: this.x,
+            y: this.y,
+            r: this.r,
+            entityId: this.entityId,
+            playerEntityId: this.playerEntityId,
+            parentNodeId: this.parentNodeId,
+        } as INodeState;
     }
 }

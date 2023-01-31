@@ -22,6 +22,8 @@ import {
 } from '../constants';
 // import { Immutable } from '../utils/ImmutableType';
 import { Player } from '../gameObjects/Player';
+import { Node } from '../gameObjects/Node';
+import { NodeBuilder } from '../gameObjects/NodeBuilder';
 import { PingMeter } from '../gameObjects/PingMeter';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
@@ -29,8 +31,11 @@ import { DistanceMatrix } from '../../utils/DistanceMatrix';
 import { capitalize, lerpRadians } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
-import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PlayerState, PongMessage, StateMessage } from '../../model/EventsFromServer';
-import { CMD_CHEAT, CMD_PING, CMD_START, StartMessage } from '../../model/EventsFromClient';
+import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PongMessage, StateMessage } from '../../model/EventsFromServer';
+import { CMD_CHEAT, CMD_CREATE_NODE, CMD_PING, CMD_START, CreateNodeMessage, StartMessage } from '../../model/EventsFromClient';
+import { IPlayerState } from '../../model/Player';
+import { INodeState } from '../../model/Node';
+
 
 
 type BaseSound = Phaser.Sound.BaseSound;
@@ -71,11 +76,12 @@ export class MainScene extends Phaser.Scene {
     lastUpdate = -1;
     lastUpdateTick = Date.now();
 
-    entityList: { [x: number]: Player } = {};
+    entityList: { [x: number]: Player | Node } = {};
 
     backgroundUILayer: Container;
     factoryLayer: Container;
     itemLayer: Container;
+    cameraInputLayer: Container;
     tankLayer: Container;
     playerLayer: Container;
     effectsLayer: Container;
@@ -86,6 +92,7 @@ export class MainScene extends Phaser.Scene {
     btn_mute: Image;
     coordinateLabel: Text;
     pingMeter?: PingMeter;
+    nodeBuilder?: NodeBuilder;
 
     mainPlayer?: Player;
     inventoryUi: Container;
@@ -220,6 +227,7 @@ export class MainScene extends Phaser.Scene {
         this.bg.setAlpha(0.7);
 
         this.backgroundUILayer = this.add.container(0, 0);
+        this.cameraInputLayer = this.add.container(0, 0);
         this.factoryLayer = this.add.container(0, 0);
         this.itemLayer = this.add.container(0, 0);
         this.tankLayer = this.add.container(0, 0);
@@ -252,7 +260,11 @@ export class MainScene extends Phaser.Scene {
                 this.mainCamera.scrollX,
                 this.mainCamera.scrollY
             );
-        })
+            this.cameraInputLayer.setPosition(
+                this.mainCamera.scrollX,
+                this.mainCamera.scrollY
+            );
+        });
         log('create complete');
     }
 
@@ -283,6 +295,7 @@ export class MainScene extends Phaser.Scene {
         }
 
         this.pingMeter?.update(time, dt);
+        this.nodeBuilder?.update(time, dt);
     }
 
     fixedUpdate(fixedTime: number, frameSize: number) {
@@ -310,6 +323,15 @@ export class MainScene extends Phaser.Scene {
     lateUpdate(fixedTime: number, frameSize: number) {
     }
 
+    setUpTouch() {
+        this.input.setTopOnly(false);
+        this.input.on('pointerdown', (...args: any[]) => {
+            log('pointerdown', args);
+        });
+        this.input.on('pointerup', (...args: any[]) => {
+            log('pointerup', args);
+        });
+    }
     setUpKeyboard() {
         this.controlsList = [
             {
@@ -369,10 +391,12 @@ export class MainScene extends Phaser.Scene {
 
         this.inventoryUi = this.createInventoryUi();
 
+        this.cameraInputLayer.add([
+            clickRect,
+        ])
         this.uiLayer.add([
             this.coordinateLabel,
             this.pingMeter,
-            clickRect,
             this.inventoryUi,
         ]);
 
@@ -385,16 +409,16 @@ export class MainScene extends Phaser.Scene {
             useHandCursor: false,
             cursor: 'pointer',
             pixelPerfect: false,
-            alphaTolerance: 1
+            alphaTolerance: 1,
         })
             .on('pointerdown', (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
-                // console.log('pointerdown');
+                console.log('clickRect pointerdown');
 
             })
             .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
-                // console.log('pointerup', pointer.x, pointer.y);
+                console.log('clickRect pointerup', pointer.x, pointer.y);
                 if (this.mainPlayer == null) return;
 
                 const touchWorldPos = this.mainCamera.getWorldPoint(pointer.x, pointer.y);
@@ -478,17 +502,17 @@ export class MainScene extends Phaser.Scene {
         return this.inventoryUi;
     }
 
-    updateInventoryUi(playerState: PlayerState) {
+    updateInventoryUi(playerState: IPlayerState) {
     }
 
-    updatePlayers(fixedTime: number, frameSize: number) {
-        for (const player of Object.values(this.entityList)) {
+    updateEntities(fixedTime: number, frameSize: number) {
+        for (const entity of Object.values(this.entityList)) {
 
-            player.fixedUpdate(fixedTime, frameSize);
+            entity.fixedUpdate(fixedTime, frameSize);
         }
     }
 
-    spawnPlayer(playerState: PlayerState) {
+    spawnPlayer(playerState: IPlayerState) {
         const player = new Player(this);
 
         // console.log(`spawnPlayer ${playerState.name} (${playerState.x}, ${playerState.y})`);
@@ -496,7 +520,115 @@ export class MainScene extends Phaser.Scene {
         this.playerLayer.add(player);
         player.init(playerState).initPhysics();
 
+
+        player.setInteractive({
+            hitArea: new Phaser.Geom.Circle(0, 0, player.r),
+            hitAreaCallback: Phaser.Geom.Circle.Contains,
+            draggable: false,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1
+        })
+            .on('pointerdown', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+                console.log('player pointerdown');
+                const xx = pointer.x + this.mainCamera.scrollX;
+                const yy = pointer.y + this.mainCamera.scrollY;
+                this.nodeBuilder = this.spawnNodeBuilder(xx, yy, player.r, player.entityId, player.entityId);
+                eventCtrl.stopPropagation();
+            })
+
         return player;
+    }
+
+    spawnNode(nodeState: INodeState) {
+        const node = new Node(this);
+
+        console.log(`spawnNode ${JSON.stringify(nodeState)})`);
+
+        this.playerLayer.add(node);
+        node.init(nodeState).initPhysics();
+
+        node.setInteractive({
+            hitArea: new Phaser.Geom.Circle(0, 0, node.r),
+            hitAreaCallback: Phaser.Geom.Circle.Contains,
+            draggable: false,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1
+        })
+            .on('pointerdown', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+                console.log('node pointerdown');
+                this.spawnNodeBuilder(pointer.x, pointer.y, node.r, node.playerId, node.entityId);
+                eventCtrl.stopPropagation();
+            })
+            ;
+
+        // draw edge
+        const player = this.entityList[nodeState.playerEntityId] as Player;
+        const parentNode = this.entityList[nodeState.parentNodeId];
+
+        player.addEdge(parentNode, node);
+
+        return node;
+    }
+
+    spawnNodeBuilder(x: number, y: number, r: number, playerId: number, parentNodeId: number) {
+        this.nodeBuilder = new NodeBuilder(this);
+
+        console.log(`spawnNodeBuilder x: ${x}, y: ${y}, r: ${r}, playerId: ${playerId}, parentNodeId: ${parentNodeId})`);
+
+        this.playerLayer.add(this.nodeBuilder);
+        this.nodeBuilder.init(x, y, r, playerId, parentNodeId);
+
+        // this.input.on('pointerup', (pointer: any, currentlyOver: any) => {
+        //     log('global pointerup', pointer, currentlyOver);
+        //     // ...
+        // });
+
+        this.nodeBuilder.setInteractive({
+            hitArea: new Phaser.Geom.Circle(0, 0, this.nodeBuilder.r),
+            hitAreaCallback: Phaser.Geom.Circle.Contains,
+            draggable: true,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1
+        })
+            .on('dragend', () => {
+                log('drag end');
+            })
+            .on('pointerup', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+                console.log('nodebuilder pointerup');
+                if (!this.nodeBuilder) return;
+
+                this.socket.emit(CMD_CREATE_NODE, {
+                    x: this.nodeBuilder.x,
+                    y: this.nodeBuilder.y,
+                    playerEntityId: this.nodeBuilder.playerEntityId,
+                    parentNodeId: this.nodeBuilder.parentNodeId,
+                } as CreateNodeMessage);
+
+
+                this.nodeBuilder?.destroy();
+                this.nodeBuilder = undefined;
+            })
+            ;
+        // nodeBuilder.input.dragState = 2;
+        // nodeBuilder.input.dragStartX = x;
+        // nodeBuilder.input.dragStartY = y;
+
+
+        //     .on('pointerup', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+        //         console.log('nodebuilder pointerdown');
+        //         eventCtrl.stopPropagation();
+        //     })
+
+        return this.nodeBuilder;
     }
 
     handlePlayerStateList(playerStateList: StateMessage) {
@@ -520,7 +652,9 @@ export class MainScene extends Phaser.Scene {
                     if (Math.abs(playerState.y - this.mainPlayer.y) > dist) return false;
                     return true;
                 })();
-                this.entityList[entityId].applyState(playerState, dt, isSmooth);
+                const player = this.entityList[entityId] as Player;
+                player.applyState(playerState, dt, isSmooth);
+
                 if (playerState.isCtrl) {
                     this.updateInventoryUi(playerState);
                     // console.log({
@@ -532,6 +666,19 @@ export class MainScene extends Phaser.Scene {
                 }
 
                 // if (isCtrl) console.log('handlePlayerStateList', playerState);
+            }
+
+            const { nodes } = playerState;
+            for (const nodeState of nodes) {
+                const { entityId } = nodeState;
+                if (!this.entityList[entityId]) {
+                    // spawn node
+                    const node = this.entityList[entityId] = this.spawnNode(nodeState);
+                } else {
+                    // update node state
+                    const node = this.entityList[entityId] as Node;
+                    node.applyState(nodeState, dt, false);
+                }
             }
         }
         this.lastUpdateTick = tick;

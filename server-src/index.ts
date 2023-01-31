@@ -92,6 +92,15 @@ io.on("connection", (socket: Socket) => {
 
 
     socket.on(CMD_CREATE_NODE, (data: CreateNodeMessage) => {
+        const { x, y, playerEntityId, parentNodeId } = data;
+
+        game.onPlayerCreateNode(
+            socket.id,
+            x,
+            y,
+            playerEntityId,
+            parentNodeId);
+
         sendState();
     });
 

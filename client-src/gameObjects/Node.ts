@@ -1,35 +1,31 @@
-import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World, XY } from '@flyover/box2d';
+import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
 import * as Debug from 'debug';
 import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { IPlayerState } from '../../model/Player';
-import { getPhysicsDefinitions } from '../../model/Player';
+import { getPhysicsDefinitions, INodeState } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
 
 
-const log = Debug('shroom-io:Player:log');
-// const warn = Debug('shroom-io:Player:warn');
+const log = Debug('shroom-io:Node:log');
+// const warn = Debug('shroom-io:Node:warn');
 // warn.log = console.warn.bind(console);
 
-// phaser Display Objects
 type Image = Phaser.GameObjects.Image;
 type GameObject = Phaser.GameObjects.GameObject;
 type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
 
-// phaser input
-type EventControl = Phaser.Types.Input.EventData;
-type Pointer = Phaser.Input.Pointer;
-
-export class Player extends Phaser.GameObjects.Container {
+export class Node extends Phaser.GameObjects.Container {
     // entity
     scene: MainScene;
     uniqueID: number;
     entityId: number;
+    playerId: number;
+    parentNodeId: number;
 
     // player info
     tint: number;
@@ -43,7 +39,6 @@ export class Player extends Phaser.GameObjects.Container {
     diceCountIcon: Image;
     diceCountLabel: Text;
     bodySprite: Image;
-    edgeGraphics: Graphics;
 
     fixtureDef?: b2FixtureDef;
     bodyDef?: b2BodyDef;
@@ -53,7 +48,6 @@ export class Player extends Phaser.GameObjects.Container {
     _debugShowEntityId = false;
 
     syncData = {
-        dt: 0,
         x: 0, y: 0,
     };
 
@@ -65,12 +59,9 @@ export class Player extends Phaser.GameObjects.Container {
     }
     createSprite() {
         this.add([
-            this.edgeGraphics = this.scene.make.graphics({
-                x: 0, y: 0
-            }, false),
             this.bodySprite = this.scene.make.image({
                 x: 0, y: 0,
-                key: 'structure_house',
+                key: 'hexagon',
             }, false),
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
@@ -88,21 +79,22 @@ export class Player extends Phaser.GameObjects.Container {
         this.nameTag.setOrigin(0.5, 1);
     }
 
-    init(state: IPlayerState): this {
-        const { entityId, x, y, r, name, color, nextCanShoot, isHuman, isCtrl: isControlling } = state;
+    init(state: INodeState): this {
+        const { entityId, x, y, r, parentNodeId, playerEntityId: playerId } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
         this.setPosition(x, y);
         this.r = r;
+
+        const isControlling = false;
+        const color = 0; // TODO: playerId;
         if (color) {
             this.tint = color;
             this.bodySprite.setTint(this.tint);
-            this.edgeGraphics.lineStyle(3, color);
         }
 
-        this.isControlling = (isControlling == null ? this.isControlling : isControlling);
-        this.setName(`Player ${name} (${this.entityId}) ${this.isControlling ? '(Me)' : ''}`);
+        this.setName(`Node ${this.entityId} (of ${playerId}) ${isControlling ? '(Me)' : ''}`);
 
         return this;
     }
@@ -141,7 +133,6 @@ export class Player extends Phaser.GameObjects.Container {
         this.b2Body.m_userData.gameObject = null;
     }
 
-
     fixedUpdate(time: number, dt: number) {
         const {
             x, y,
@@ -162,20 +153,22 @@ export class Player extends Phaser.GameObjects.Container {
         // this.hpBar.setPosition(this.x, this.y);
     }
 
-    applyState(state: IPlayerState, dt: number, isSmooth = true) {
+    applyState(state: INodeState, dt: number, isSmooth = true) {
         const {
             x, y,
-            r,
-            name, color,
-            isHuman, isCtrl,
-            nextCanShoot,
+            entityId,
+            playerEntityId: playerId,
+            parentNodeId,
         } = state;
 
 
         this.syncData = {
-            dt,
             x, y,
         };
+
+        this.entityId = entityId;
+        this.playerId = playerId;
+        this.parentNodeId = parentNodeId;
 
         if (!isSmooth) {
             this.x = x;
@@ -188,16 +181,7 @@ export class Player extends Phaser.GameObjects.Container {
             ); // TODO: lerp instead of set
         }
 
-        if (color) {
-            this.tint = color;
-            this.bodySprite.setTint(this.tint);
-        }
-
-        this.isControlling = (isCtrl == null ? this.isControlling : isCtrl);
-        this.setName(name);
-
-        const entityIdStr = this._debugShowEntityId ? ` (${this.entityId})` : ``;
-        this.nameTag.setText(`${name}${entityIdStr}`);
+        this.nameTag.setText(this.name);
 
         // console.log(diceColors);
 
@@ -207,13 +191,5 @@ export class Player extends Phaser.GameObjects.Container {
         //     ? `(${x.toFixed(1)}, ${y.toFixed(1)})`
         //     : ''
         // );
-    }
-
-    addEdge(fromNode: XY, toNode: XY) {
-        // TODO: store the edge list and prepare to remove them
-
-        this.edgeGraphics.lineBetween(
-            fromNode.x - this.x, fromNode.y - this.y,
-            toNode.x - this.x, toNode.y - this.y);
     }
 }

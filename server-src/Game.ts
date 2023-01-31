@@ -8,12 +8,15 @@ import {
 import * as Debug from 'debug';
 import { IFixtureUserData, IBodyUserData } from '../client-src/PhysicsSystem';
 import { Player } from './Player';
+import { Node } from './Node';
 import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
-import { EVT_PLAYER_DISCONNECTED, PlayerState, StateMessage } from '../model/EventsFromServer';
+import { EVT_PLAYER_DISCONNECTED, StateMessage } from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
 import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
 import { names } from '../model/Names'
+import { IPlayerState } from '../model/Player';
+import { INodeState } from '../model/Node';
 
 
 const verbose = Debug('shroom-io:Game:verbose');
@@ -25,6 +28,7 @@ const inventoryLog = Debug('shroom-io:Game.inventory:log');
 
 export class Game {
     public players: Player[] = [];
+    public nodes: Node[] = [];
     sfx_point: any;
 
     frameSize = PHYSICS_FRAME_SIZE; // ms
@@ -54,6 +58,10 @@ export class Game {
 
     getPlayerById(socketId: string) {
         return this.players.find(p => p.socketId === socketId);
+    }
+
+    getNodesByPlayerId(playerEntityId: number) {
+        return this.nodes.filter(n => n.playerEntityId === playerEntityId);
     }
 
     isPlayerExists(socketId: string) {
@@ -135,7 +143,9 @@ export class Game {
                     isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
                     nextMoveTick: player.nextMoveTick,
                     nextCanShoot: player.nextCanShoot,
-                } as PlayerState;
+
+                    nodes: this.getNodesByPlayerId(player.entityId).map(n => n.toStateObject()),
+                } as IPlayerState;
             })
         );
 
@@ -143,6 +153,14 @@ export class Game {
             tick: Date.now(),
             state,
         };
+    }
+
+    onPlayerCreateNode(clientId: string, x: number, y: number, playerEntityId: number, parentNodeId: number) {
+        // TODO: do some checkings; reject some commands like too far or no money;
+        // TODO: send some return message if not possible
+
+        const player = this.getPlayerById(clientId);
+        this.spawnNode(x, y, playerEntityId, parentNodeId);
     }
 
     onPlayerDash(playerId: string, dashVector: XY) {
@@ -227,6 +245,18 @@ export class Game {
         this.randomizePlayerPosition(npc);
 
         return npc;
+
+    }
+    spawnNode(x: number, y: number, playerEntityId: number, parentNodeId: number) {
+        log('spawnNode');
+
+        const node = Node.create(playerEntityId, parentNodeId);
+        if (node) this.nodes.push(node);
+        node.x = x;
+        node.y = y;
+        node.createPhysics(this.physicsSystem, () => { });
+
+        return node;
 
     }
 

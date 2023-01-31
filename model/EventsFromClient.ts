@@ -8,7 +8,10 @@ export type StartMessage = {
 
 export const CMD_CREATE_NODE = 'CMD_CREATE_NODE';
 export type CreateNodeMessage = {
-    position: XY;
+    x: number;
+    y: number;
+    playerEntityId: number;
+    parentNodeId: number;
 }
 
 

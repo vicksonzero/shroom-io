@@ -54,6 +54,7 @@ For first time set up [see this](#server-Setup)
 
 ## Deploy Client
 
+Run in Bash only
 ```bash
 # create `../build` if not yet done
 npm run build && ./compress-build.sh

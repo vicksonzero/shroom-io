@@ -105,6 +105,7 @@ We also use cloudflare to reverse-proxy the websocket traffic.
 5. Get Git **Personal access tokens**:
    1. https://github.com/settings/tokens
    2. **No need** to make SSH keys
+   3. Do try to use git credentials to store password though.
 6. Install typescript cli:
    1. `npm i -g typescript@4.7.4`
 7. Install project:

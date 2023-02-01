@@ -33,3 +33,9 @@ export const PHYSICS_ALLOW_SLEEPING = false; // default false
 export const PHYSICS_MAX_FRAME_CATCHUP = 10; // times, default 10 times (10*16 = 160ms)
 export const WS_URL = "wss://ggj2023.dickson.md";
 // export const WS_URL = localStorage.getItem('md.dickson.ws_url') || 'ws://localhost:3000'
+
+
+// mushroom
+
+export const BUILD_RADIUS_MIN = 30;
+export const BUILD_RADIUS_MAX = 100;

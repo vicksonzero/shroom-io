@@ -19,6 +19,8 @@ import {
     WORLD_WIDTH, WORLD_HEIGHT,
     CAMERA_WIDTH, CAMERA_HEIGHT,
     WS_URL,
+    BUILD_RADIUS_MAX,
+    BUILD_RADIUS_MIN,
 } from '../constants';
 // import { Immutable } from '../utils/ImmutableType';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
@@ -52,6 +54,11 @@ type Container = Phaser.GameObjects.Container;
 type Graphics = Phaser.GameObjects.Graphics;
 type Image = Phaser.GameObjects.Image;
 type Text = Phaser.GameObjects.Text;
+
+
+const POINTER_MOVE = Phaser.Input.Events.POINTER_MOVE;
+const POINTER_DOWN = Phaser.Input.Events.POINTER_DOWN;
+const POINTER_UP = Phaser.Input.Events.POINTER_UP;
 
 const Vector2 = Phaser.Math.Vector2;
 const KeyCodes = Phaser.Input.Keyboard.KeyCodes;
@@ -102,6 +109,11 @@ export class MainScene extends Phaser.Scene {
     mainPlayer?: Player;
     inventoryUi: Container;
     inventoryIcons: Container;
+
+    zoomButton: Container;
+    zoomIndicator: Image;
+    isZoomMode: boolean;
+    zoomStart = { x: 0, y: 0 };
 
     // sfx_shoot: BaseSound;
     // sfx_hit: BaseSound;
@@ -222,6 +234,7 @@ export class MainScene extends Phaser.Scene {
         this.initSocket();
         _assets_setUpAudio.call(this);
         log('create');
+        this.isZoomMode = false;
         this.mainCamera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         this.fixedTime = new Phaser.Time.Clock(this);
         this.fixedElapsedTime = 0;
@@ -252,6 +265,7 @@ export class MainScene extends Phaser.Scene {
         //     loop: false,
         // });
 
+        this.setUpTouch();
         this.setUpGUI();
         // this.setUpTutorial();
         this.setUpKeyboard();
@@ -324,13 +338,19 @@ export class MainScene extends Phaser.Scene {
     }
 
     setUpTouch() {
+        console.log(`setUpTouch`);
         this.input.setTopOnly(false);
-        this.input.on('pointerdown', (...args: any[]) => {
-            log('pointerdown', args);
+
+        this.input.on(POINTER_DOWN, (pointer: Pointer, objects: Phaser.GameObjects.GameObject[]) => {
+            // console.log('(POINTER_DOWN)');
         });
-        this.input.on('pointerup', (...args: any[]) => {
-            log('pointerup', args);
+        this.input.on(POINTER_MOVE, (pointer: Pointer, objects: Phaser.GameObjects.GameObject[]) => {
+            // console.log('(POINTER_MOVE)');
         });
+        this.input.on(POINTER_UP, (pointer: Pointer, objects: Phaser.GameObjects.GameObject[]) => {
+            // console.log('(POINTER_UP)');
+        });
+
     }
     setUpKeyboard() {
         this.controlsList = [
@@ -386,10 +406,24 @@ export class MainScene extends Phaser.Scene {
         };
 
         const clickRect = this.add.graphics();
-        clickRect.fillStyle(0xFFFFFF, 0.1);
+        clickRect.fillStyle(0xFFFFFF, 0.01);
         clickRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 
+        const zoomRect = this.add.graphics();
+        zoomRect.fillStyle(0xFFFFFF, 0.01);
+        zoomRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
+
         this.inventoryUi = this.createInventoryUi();
+        this.zoomIndicator = this.make.image({
+            x: CAMERA_WIDTH / 2, y: CAMERA_HEIGHT / 2,
+            key: 'zoom',
+        })
+            .setTint(0x000000)
+            .setScale(4)
+            .setAlpha(0.4);
+        ;
+        this.zoomIndicator.setVisible(this.isZoomMode);
+
 
         this.cameraInputLayer.add([
             clickRect,
@@ -397,7 +431,9 @@ export class MainScene extends Phaser.Scene {
         this.uiLayer.add([
             this.coordinateLabel,
             this.pingMeter,
+            zoomRect,
             this.inventoryUi,
+            this.zoomIndicator,
         ]);
 
 
@@ -411,25 +447,56 @@ export class MainScene extends Phaser.Scene {
             pixelPerfect: false,
             alphaTolerance: 1,
         })
-            .on('pointerdown', (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
                 console.log('clickRect pointerdown');
 
             })
-            .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+            .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
                 console.log('clickRect pointerup', pointer.x, pointer.y);
-                if (this.mainPlayer == null) return;
+                this.handleNodeBuilder(pointer);
+            });
 
-                const touchWorldPos = this.mainCamera.getWorldPoint(pointer.x, pointer.y);
-                // console.log('pointerup', touchWorldPos.x, touchWorldPos.y);
-                const dashVector = {
-                    x: (touchWorldPos.x - this.mainPlayer.x) * 0.7,
-                    y: (touchWorldPos.y - this.mainPlayer.y) * 0.7
+
+        zoomRect.setInteractive({
+            hitArea: new Phaser.Geom.Rectangle(zoomRect.x, zoomRect.y, CAMERA_WIDTH, CAMERA_HEIGHT),
+            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+            draggable: false,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1,
+        })
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('zoomRect POINTER_DOWN');
+                if (this.isZoomMode && (pointer.buttons & 1)) {
+                    this.zoomStart = {
+                        x: pointer.x,
+                        y: pointer.y,
+                    };
+                    event.stopPropagation();
                 }
-                // console.log('pointerup', dashVector);
 
-                // this.socket.emit('dash', { dashVector });
+            })
+            .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                if (this.isZoomMode && (pointer.buttons & 1)) {
+                    console.log('zoomRect POINTER_MOVE dragged');
+                    this.mainCamera.scrollX += this.zoomStart.x - pointer.x;
+                    this.mainCamera.scrollY += this.zoomStart.y - pointer.y;
+                    this.zoomStart = {
+                        x: pointer.x,
+                        y: pointer.y,
+                    };
+                    event.stopPropagation();
+                }
+            })
+            .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                if (this.isZoomMode && (pointer.buttons & 1)) {
+                    console.log('zoomRect POINTER_UP', pointer.x, pointer.y);
+                    event.stopPropagation();
+                }
             });
     }
 
@@ -467,18 +534,63 @@ export class MainScene extends Phaser.Scene {
             this.make.graphics({ x: 0, y: 0 })
                 .fillStyle(0xFFFFFF, 1)
                 .fillRect(0, 0, CAMERA_WIDTH, 64)
-        ]);
+        ])
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('inventoryUi POINTER_DOWN');
+                event.stopPropagation();
+            })
+            .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('inventoryUi POINTER_MOVE');
+                event.stopPropagation();
+            })
+            .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('inventoryUi POINTER_UP');
+                event.stopPropagation();
+            });
 
-        // this.inventoryUi.setInteractive({
-        //     hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, 64),
-        //     hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        //     draggable: false,
-        //     dropZone: false,
-        //     useHandCursor: false,
-        //     cursor: 'pointer',
-        //     pixelPerfect: false,
-        //     alphaTolerance: 1
-        // })
+        this.inventoryUi.setInteractive({
+            hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, 64),
+            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+            draggable: false,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1
+        });
+
+        this.inventoryUi.add([
+            this.zoomButton = this.make.container({ x: 0, y: 0 }).add([
+                this.make.image({
+                    x: 0, y: 0,
+                    key: 'zoom',
+                })
+                    .setTint(0x000000)
+                    .setOrigin(0, 0),
+            ])
+                .setInteractive({
+                    hitArea: new Phaser.Geom.Rectangle(0, 0, 64, 64),
+                    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+                    draggable: false,
+                    dropZone: false,
+                    useHandCursor: false,
+                    cursor: 'pointer',
+                    pixelPerfect: false,
+                    alphaTolerance: 1
+                })
+                .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    (this.zoomButton.list[0] as Image).setTint(0x666666);
+                })
+                .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    console.log('pointerdown');
+
+                    this.isZoomMode = !this.isZoomMode;
+                    this.zoomIndicator.setVisible(this.isZoomMode);
+                    (this.zoomButton.list[0] as Image).setTint(0x000000);
+                    event.stopPropagation();
+                })
+            ,
+        ]);
         // .on('pointerover', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
         //     console.log('pointerover');
         // })
@@ -546,7 +658,7 @@ export class MainScene extends Phaser.Scene {
             pixelPerfect: false,
             alphaTolerance: 1
         })
-            .on('pointerdown', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
                 console.log('player pointerdown');
                 const xx = pointer.x + this.mainCamera.scrollX;
                 const yy = pointer.y + this.mainCamera.scrollY;
@@ -575,7 +687,7 @@ export class MainScene extends Phaser.Scene {
             pixelPerfect: false,
             alphaTolerance: 1
         })
-            .on('pointerdown', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
                 console.log('node pointerdown');
                 this.spawnNodeBuilder(pointer.x, pointer.y, node.r, node.playerId, node.entityId);
                 eventCtrl.stopPropagation();
@@ -614,24 +726,6 @@ export class MainScene extends Phaser.Scene {
             pixelPerfect: false,
             alphaTolerance: 1
         })
-            .on('dragend', () => {
-                log('drag end');
-            })
-            .on('pointerup', (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
-                console.log('nodeBuilder pointerup');
-                if (!this.nodeBuilder) return;
-
-                this.socket.emit(CMD_CREATE_NODE, {
-                    x: this.nodeBuilder.x,
-                    y: this.nodeBuilder.y,
-                    playerEntityId: this.nodeBuilder.playerEntityId,
-                    parentNodeId: this.nodeBuilder.parentNodeId,
-                } as CreateNodeMessage);
-
-
-                this.nodeBuilder?.destroy();
-                this.nodeBuilder = undefined;
-            })
             ;
         // nodeBuilder.input.dragState = 2;
         // nodeBuilder.input.dragStartX = x;
@@ -660,12 +754,38 @@ export class MainScene extends Phaser.Scene {
     spawnPacketEffect(packetState: IPacketState, fromEntity: Container, toEntity: Container) {
         const packetEffect = new PacketEffect(this);
 
-        console.log(`spawnPacketEffect ${JSON.stringify(packetState)})`);
-
         this.effectsLayer.add(packetEffect);
         packetEffect.init(packetState, fromEntity, toEntity);
 
         return packetEffect;
+    }
+
+
+    handleNodeBuilder(pointer: Pointer) {
+        if (!this.nodeBuilder) return;
+
+        const parentNode = this.entityList[this.nodeBuilder.parentNodeId];
+
+        const dx = parentNode.x - this.nodeBuilder.x;
+        const dy = parentNode.y - this.nodeBuilder.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+
+        if (distance < BUILD_RADIUS_MIN) {
+            console.log('handleNodeBuilder upgrade');
+
+        } else {
+            this.socket.emit(CMD_CREATE_NODE, {
+                x: this.nodeBuilder.x,
+                y: this.nodeBuilder.y,
+                playerEntityId: this.nodeBuilder.playerEntityId,
+                parentNodeId: this.nodeBuilder.parentNodeId,
+            } as CreateNodeMessage);
+        }
+
+
+        this.nodeBuilder?.destroy();
+        this.nodeBuilder = undefined;
     }
 
     handlePlayerStateList(stateMessage: StateMessage) {
@@ -679,8 +799,9 @@ export class MainScene extends Phaser.Scene {
                 const player = this.entityList[entityId] = this.spawnPlayer(playerState);
                 if (player.isControlling) {
                     console.log(`Me: ${playerState.entityId}`);
+                    // this.mainCamera.startFollow(player, true, 0.2, 0.2);
+                    this.mainCamera.centerOn(player.x, player.y);
                     this.mainPlayer = player;
-                    this.mainCamera.startFollow(player, true, 0.2, 0.2);
                 }
             } else {
                 const isSmooth = (() => {
@@ -731,7 +852,6 @@ export class MainScene extends Phaser.Scene {
                 resource.applyState(resourceState, dt, false);
             }
         }
-        console.log('packetStates', JSON.stringify(packetStates));
 
         for (const packetState of packetStates) {
             const { entityId, fromEntityId, toEntityId } = packetState;
@@ -765,7 +885,7 @@ export class MainScene extends Phaser.Scene {
     addToList(gameObject: (GameObjects.Container & { uniqueID: number }), list: (GameObjects.Container & { uniqueID: number })[]) {
         list.push(gameObject);
         // this.instancesByID[gameObject.uniqueID] = gameObject;
-        gameObject.on('destroy', () => {
+        gameObject.on(Phaser.GameObjects.Events.DESTROY, () => {
             list.splice(list.indexOf(gameObject), 1);
             // delete this.instancesByID[gameObject.uniqueID];
         });

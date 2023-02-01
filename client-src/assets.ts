@@ -20,6 +20,7 @@ export function preload(this: Phaser.Scene) {
     this.load.image('cards_take', './assets/kenney_boardgameicons/cards_take.png');
 
     this.load.image('mineral1', './assets/craftpix/48 Free Minerals Pixel Art Icons Pack/Icon16.png');
+    this.load.image('zoom', './assets/iconduck/icons/binoculars_64x64.png');
 
 
     // this.load.atlas('items_icon',

@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, BUILD_RADIUS_MAX, BUILD_RADIUS_MIN } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -31,6 +31,8 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
     debugText?: Text;
     nameTag: Text;
     bodyGraphics: Graphics;
+    lineGraphics: Graphics;
+    nodeImage: Image;
 
     constructor(scene: MainScene) {
         super(scene, 0, 0, []);
@@ -39,6 +41,13 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
     }
     createSprite() {
         this.add([
+            this.lineGraphics = this.scene.make.graphics({
+                x: 0, y: 0,
+            }),
+            this.nodeImage = this.scene.make.image({
+                x: 0, y: 0,
+                key: 'hexagon',
+            }, false),
             this.bodyGraphics = this.scene.make.graphics({
                 x: 0, y: 0,
             }),
@@ -54,6 +63,8 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
             // }),
 
         ]);
+
+        this.nodeImage.setScale(0.6);
 
         this.nameTag.setOrigin(0.5, 1);
         this.nameTag.setText('NodeBuilder');
@@ -76,17 +87,49 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
         this.bodyGraphics.clear();
         this.bodyGraphics.lineStyle(2, color, 1);
         this.bodyGraphics.strokeCircle(0, 0, this.r);
+
+        const parentNode = this.scene.entityList[this.parentNodeId];
+        if (parentNode) {
+            this.lineGraphics.lineStyle(5, parentNode.tint);
+            this.nodeImage.setTint(parentNode.tint);
+        }
         return this;
     }
 
     update(time: number, dt: number) {
-        const pos = this.scene.input.activePointer.position;
-        const camera = this.scene.mainCamera;
-        this.setPosition(
-            pos.x + camera.scrollX,
-            pos.y + camera.scrollY
-        );
+        const parentNode = this.scene.entityList[this.parentNodeId];
+        if (!parentNode) return;
 
+
+        const pointerPos = this.scene.input.activePointer.position;
+        const camera = this.scene.mainCamera;
+
+        let xx = pointerPos.x + camera.scrollX;
+        let yy = pointerPos.y + camera.scrollY;
+
+
+        let dx = parentNode.x - xx;
+        let dy = parentNode.y - yy;
+        let distanceToParentNode = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+
+        if (distanceToParentNode > BUILD_RADIUS_MAX) distanceToParentNode = BUILD_RADIUS_MAX;
+
+        if (distanceToParentNode < BUILD_RADIUS_MIN) {
+            this.nodeImage.setAlpha(0.3);
+            this.lineGraphics?.clear();
+        } else {
+            dx = distanceToParentNode * Math.cos(angle);
+            dy = distanceToParentNode * Math.sin(angle);
+
+            this.lineGraphics?.clear().lineBetween(
+                0, 0,
+                dx, dy
+            )
+            this.nodeImage.setAlpha(0.7);
+
+        }
+        this.setPosition(parentNode.x - dx, parentNode.y - dy);
     }
 
     fixedUpdate(time: number, dt: number) {

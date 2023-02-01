@@ -111,7 +111,7 @@ export class Resource extends Phaser.GameObjects.Container {
     }
 
     init(state: IResourceState): this {
-        const { entityId, x, y, r, mineralAmount } = state;
+        const { eid: entityId, x, y, r, mAmt: mineralAmount } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
@@ -178,8 +178,8 @@ export class Resource extends Phaser.GameObjects.Container {
     applyState(state: IResourceState, dt: number, isSmooth = true) {
         const {
             x, y,
-            entityId,
-            mineralAmount,
+            eid: entityId,
+            mAmt: mineralAmount,
         } = state;
 
         this.syncData = {

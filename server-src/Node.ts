@@ -6,6 +6,7 @@ import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import * as Debug from 'debug';
 import { DistanceMatrix } from '../utils/DistanceMatrix';
 import { Resource } from './Resource';
+import { threeDp } from '../utils/utils';
 
 const verbose = Debug('shroom-io:Node:verbose');
 const log = Debug('shroom-io:Node:log');
@@ -31,7 +32,7 @@ export class Node {
     public isControlling = false;
     public playerEntityId: number;
     public parentNodeId: number;
-
+    public birthday: number;
 
 
     // physics
@@ -58,12 +59,13 @@ export class Node {
     constructor() {
         this.entityId = getUniqueID();
     }
-    static create(playerId: number, parentNodeId: number) {
+    static create(playerId: number, parentNodeId: number, birthday: number) {
         const result = new Node();
         result.name = `Node of ${playerId}`;
 
         result.playerEntityId = playerId;
         result.parentNodeId = parentNodeId;
+        result.birthday = birthday;
 
         return result;
     }
@@ -109,12 +111,13 @@ export class Node {
 
     toStateObject() {
         return {
-            x: this.x,
-            y: this.y,
+            x: threeDp(this.x),
+            y: threeDp(this.y),
             r: this.r,
-            entityId: this.entityId,
-            playerEntityId: this.playerEntityId,
-            parentNodeId: this.parentNodeId,
+            eid: this.entityId,
+            plEid: this.playerEntityId,
+            parEid: this.parentNodeId,
+            birthday: this.birthday,
         } as INodeState;
     }
 }

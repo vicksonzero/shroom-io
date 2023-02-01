@@ -26,7 +26,7 @@ import {
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
 // import { GameObjects } from 'phaser';
-import { capitalize, lerpRadians } from '../../utils/utils';
+import { capitalize, lerpRadians, threeDp } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PongMessage, StateMessage } from '../../model/EventsFromServer';
@@ -88,7 +88,7 @@ export class MainScene extends Phaser.Scene {
     lastUpdateTick = Date.now();
 
     entityList: { [x: number]: Player | Node | Resource } = {};
-    effectEntityList: { [x: number]: PacketEffect } = {};
+    effectEntityList: PacketEffect[] = [];
 
     backgroundUILayer: Container;
     factoryLayer: Container;
@@ -128,12 +128,15 @@ export class MainScene extends Phaser.Scene {
     startScreen: HTMLDivElement;
     disconnectedScreen: HTMLDivElement;
 
+    distanceMatrix: DistanceMatrix = new DistanceMatrix();
+
     get mainCamera() { return this.sys.cameras.main; }
 
     constructor() {
         super({
             key: "MainScene",
         })
+        this.distanceMatrix.getTransformList = () => this.getTransformList();
     }
 
     preload() {
@@ -198,7 +201,7 @@ export class MainScene extends Phaser.Scene {
             (window as any).socketT = this.socket;
         });
         this.socket.on(EVT_STATE, (stateMessage: StateMessage) => {
-            const entityIdList = stateMessage.playerStates.map(p => p.entityId).join(', ');
+            const entityIdList = stateMessage.playerStates.map(p => p.eid).join(', ');
             socketLog(`Socket state (${stateMessage.playerStates.length}) [${entityIdList}]`);
             this.handlePlayerStateList(stateMessage);
         });
@@ -326,7 +329,7 @@ export class MainScene extends Phaser.Scene {
             timeStep,
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
-        // this.distanceMatrix.init([this.bluePlayer, this.redPlayer, ...this.blueAi, ...this.redAi, ...this.items]);
+        this.distanceMatrix.init();
         this.updatePacketEffects(fixedTime, frameSize);
 
 
@@ -337,6 +340,8 @@ export class MainScene extends Phaser.Scene {
 
     lateUpdate(fixedTime: number, frameSize: number) {
     }
+
+    getTransformList = () => Object.values(this.entityList);
 
     setUpTouch() {
         console.log(`setUpTouch`);
@@ -659,7 +664,47 @@ export class MainScene extends Phaser.Scene {
     }
 
     updatePacketEffects(fixedTime: number, frameSize: number) {
-        for (const [entityId, packetEffect] of Object.entries(this.effectEntityList)) {
+
+        for (const [entityId, entity] of Object.entries(this.entityList)) {
+            if (!(entity instanceof Node)) continue;
+
+            const node = entity as Node;
+            // if it is time for node to spawn effect,
+            if (node.nextCanShoot > Date.now()) continue;
+            node.nextCanShoot = Date.now() + 5000;
+
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
+
+            const resourceResult = closestEntities
+                .map(([entityId, dist]) => [this.entityList[entityId], dist])
+                .find(([e, dist]) => e instanceof Resource);
+            if (!resourceResult) continue;
+
+
+            const [resource, dist] = resourceResult as [Resource, number];
+            log(`resourceResult r-${resource.entityId} dist=${dist}`);
+            if (dist > 100) continue;
+
+            const player = this.entityList[node.playerId];
+            if (!player) continue;
+
+            // spawn effect
+            this.spawnPacketEffect({
+                entityId: -1,
+                fromEntityId: resource.entityId,
+                toEntityId: node.entityId,
+
+                mineralAmount: 10,
+                ammoAmount: 0,
+
+                fromFixedTime: -1,
+                timeLength: 3000,
+            }, resource, node);
+        }
+
+
+        // trigger effect update()
+        for (const packetEffect of this.effectEntityList) {
 
             const fromEntity = this.entityList[packetEffect.fromEntityId];
             const toEntity = this.entityList[packetEffect.toEntityId];
@@ -728,9 +773,10 @@ export class MainScene extends Phaser.Scene {
             })
             ;
 
+        const { plEid: playerEntityId, parEid: parentNodeId } = nodeState;
         // draw edge
-        const player = this.entityList[nodeState.playerEntityId] as Player;
-        const parentNode = this.entityList[nodeState.parentNodeId];
+        const player = this.entityList[playerEntityId] as Player;
+        const parentNode = this.entityList[parentNodeId];
 
         player.addEdge(parentNode, node);
 
@@ -786,10 +832,13 @@ export class MainScene extends Phaser.Scene {
     }
 
     spawnPacketEffect(packetState: IPacketState, fromEntity: Container, toEntity: Container) {
+        console.log('spawnPacketEffect');
         const packetEffect = new PacketEffect(this);
 
         this.effectsLayer.add(packetEffect);
         packetEffect.init(packetState, fromEntity, toEntity);
+
+        this.effectEntityList.push(packetEffect);
 
         return packetEffect;
     }
@@ -810,8 +859,8 @@ export class MainScene extends Phaser.Scene {
 
         } else {
             this.socket.emit(CMD_CREATE_NODE, {
-                x: this.nodeBuilder.x,
-                y: this.nodeBuilder.y,
+                x: threeDp(this.nodeBuilder.x),
+                y: threeDp(this.nodeBuilder.y),
                 playerEntityId: this.nodeBuilder.playerEntityId,
                 parentNodeId: this.nodeBuilder.parentNodeId,
             } as CreateNodeMessage);
@@ -823,16 +872,16 @@ export class MainScene extends Phaser.Scene {
     }
 
     handlePlayerStateList(stateMessage: StateMessage) {
-        const { tick, playerStates, resourceStates, packetStates } = stateMessage;
+        const { tick, playerStates, resourceStates } = stateMessage;
 
         const dt = (tick - this.lastUpdateTick) / 1000;
         this.fixedElapsedTime = tick; // HACK: just forgetting lerping for a while
         for (const playerState of playerStates) {
-            const { entityId, isCtrl } = playerState;
+            const { eid: entityId, isCtrl } = playerState;
             if (!this.entityList[entityId]) {
                 const player = this.entityList[entityId] = this.spawnPlayer(playerState);
                 if (player.isControlling) {
-                    console.log(`Me: ${playerState.entityId}`);
+                    console.log(`Me: ${playerState.eid}`);
                     // this.mainCamera.startFollow(player, true, 0.2, 0.2);
                     this.mainCamera.centerOn(player.x, player.y);
                     this.mainPlayer = player;
@@ -863,7 +912,7 @@ export class MainScene extends Phaser.Scene {
 
             const { nodes } = playerState;
             for (const nodeState of nodes) {
-                const { entityId } = nodeState;
+                const { eid: entityId } = nodeState;
                 if (!this.entityList[entityId]) {
                     // spawn node
                     const node = this.entityList[entityId] = this.spawnNode(nodeState);
@@ -876,7 +925,7 @@ export class MainScene extends Phaser.Scene {
         }
 
         for (const resourceState of resourceStates) {
-            const { entityId } = resourceState;
+            const { eid: entityId } = resourceState;
             if (!this.entityList[entityId]) {
                 // spawn node
                 const resource = this.entityList[entityId] = this.spawnResource(resourceState);
@@ -884,31 +933,6 @@ export class MainScene extends Phaser.Scene {
                 // update node state
                 const resource = this.entityList[entityId] as Resource;
                 resource.applyState(resourceState, dt, false);
-            }
-        }
-
-        for (const packetState of packetStates) {
-            const { entityId, fromEntityId, toEntityId } = packetState;
-            if (!this.effectEntityList[entityId]) {
-                // spawn node
-                const fromEntity = this.entityList[fromEntityId];
-                const toEntity = this.entityList[toEntityId];
-                if (fromEntity == null ||
-                    toEntity == null) {
-                    warn(`Entity not found`, fromEntity, toEntity);
-                } else {
-                    this.effectEntityList[entityId] = this.spawnPacketEffect(packetState, fromEntity, toEntity);
-                }
-            }
-        }
-        const entityIds = packetStates.map(p => p.entityId);
-
-        for (const [entityId, packetEffect] of Object.entries(this.effectEntityList)) {
-            const isEnd = !entityIds.includes(packetEffect.entityId);
-            if (isEnd) {
-                log(`packetEffect-${packetEffect.entityId} isEnd`);
-                delete this.effectEntityList[packetEffect.entityId];
-                packetEffect.destroy();
             }
         }
 

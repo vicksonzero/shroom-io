@@ -2,16 +2,17 @@ import { b2FixtureDef, b2CircleShape, b2BodyDef, b2BodyType } from "@flyover/box
 import { collisionCategory } from "../model/collisionCategory";
 
 export type INodeState = {
-    entityId: number,
+    eid: number,
     x: number,
     y: number,
     r: number,
 
-    playerEntityId: number,
-    parentNodeId: number,
+    plEid: number, // playerEntityId
+    parEid: number, // parentNodeId
+    birthday: number,
 
-    mineralAmount: number,
-    ammoAmount: number,
+    mAmt: number, // mineralAmount
+    aAmt: number, // ammoAmount
 };
 
 export const getPhysicsDefinitions = (radius: number) => {

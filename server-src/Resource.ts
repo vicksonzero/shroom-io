@@ -5,6 +5,7 @@ import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2FixtureDef, b2Vec2, b2W
 import { PIXEL_TO_METER } from "./constants.js";
 import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import { IResourceState } from '../model/Resource';
+import { threeDp } from '../utils/utils';
 
 const verbose = Debug('shroom-io:Resource:verbose');
 const log = Debug('shroom-io:Resource:log');
@@ -103,11 +104,11 @@ export class Resource {
 
     toStateObject() {
         return {
-            x: this.x,
-            y: this.y,
+            x: threeDp(this.x),
+            y: threeDp(this.y),
             r: this.r,
-            entityId: this.entityId,
-            mineralAmount: this.mineralAmount,
+            eid: this.entityId,
+            mAmt: this.mineralAmount,
         } as IResourceState;
     }
 }

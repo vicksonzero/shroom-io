@@ -26,6 +26,7 @@ export class Node extends Phaser.GameObjects.Container {
     entityId: number;
     playerId: number;
     parentNodeId: number;
+    birthday: number; // TODO: need to use birthday better
 
     // player info
     tint: number;
@@ -81,10 +82,11 @@ export class Node extends Phaser.GameObjects.Container {
     }
 
     init(state: INodeState): this {
-        const { entityId, x, y, r, parentNodeId, playerEntityId: playerId } = state;
+        const { eid: entityId, x, y, r, parEid, plEid: playerEntityId, birthday } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
+        this.birthday = birthday;
         this.setPosition(x, y);
         this.r = r;
 
@@ -95,7 +97,7 @@ export class Node extends Phaser.GameObjects.Container {
             this.bodySprite.setTint(this.tint);
         }
 
-        this.setName(`Node ${this.entityId} (of ${playerId}) ${isControlling ? '(Me)' : ''}`);
+        this.setName(`Node ${this.entityId} (of ${playerEntityId}) ${isControlling ? '(Me)' : ''}`);
 
         return this;
     }
@@ -157,9 +159,9 @@ export class Node extends Phaser.GameObjects.Container {
     applyState(state: INodeState, dt: number, isSmooth = true) {
         const {
             x, y,
-            entityId,
-            playerEntityId: playerId,
-            parentNodeId,
+            eid: entityId,
+            plEid: playerEntityId,
+            parEid,
         } = state;
 
 
@@ -168,8 +170,8 @@ export class Node extends Phaser.GameObjects.Container {
         };
 
         this.entityId = entityId;
-        this.playerId = playerId;
-        this.parentNodeId = parentNodeId;
+        this.playerId = playerEntityId;
+        this.parentNodeId = parEid;
 
         if (!isSmooth) {
             this.x = x;

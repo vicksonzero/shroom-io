@@ -147,7 +147,7 @@ export class PacketEffect extends Phaser.GameObjects.Container {
             xx, yy
         );
 
-        this.nameTag.setText(`(${this.entityId})`);
+        this.nameTag.setText(``);
         // this.debugText?.setText(this.isControlling ? `(${x.toFixed(1)}, ${y.toFixed(1)})` : '');
         // console.log(smoothX, );
     }

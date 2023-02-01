@@ -92,7 +92,7 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     init(state: IPlayerState): this {
-        const { entityId, x, y, r, name, color, nextCanShoot, isHuman, isCtrl: isControlling } = state;
+        const { eid: entityId, x, y, r, name, color, nextCanShoot, isHuman, isCtrl: isControlling } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
@@ -172,8 +172,8 @@ export class Player extends Phaser.GameObjects.Container {
             name, color,
             isHuman, isCtrl,
             nextCanShoot,
-            mineralAmount,
-            ammoAmount,
+            mAmt: mineralAmount,
+            aAmt: ammoAmount,
         } = state;
 
 

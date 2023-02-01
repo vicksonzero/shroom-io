@@ -2,12 +2,12 @@ import { b2FixtureDef, b2CircleShape, b2BodyDef, b2BodyType } from "@flyover/box
 import { collisionCategory } from "../model/collisionCategory";
 
 export type IResourceState = {
-    entityId: number,
+    eid: number,
     x: number,
     y: number,
     r: number,
 
-    mineralAmount: number,
+    mAmt: number,
 };
 
 export const getPhysicsDefinitions = (radius: number) => {

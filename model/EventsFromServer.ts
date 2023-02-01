@@ -20,7 +20,6 @@ export type StateMessage = {
     tick: number;
     playerStates: IPlayerState[];
     resourceStates: IResourceState[];
-    packetStates: IPacketState[];
 };
 
 export const EVT_DEBUG_INSPECT_RETURN = 'EVT_DEBUG_INSPECT_RETURN';

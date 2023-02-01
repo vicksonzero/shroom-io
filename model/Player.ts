@@ -4,7 +4,7 @@ import { INodeState } from "./Node";
 
 
 export type IPlayerState = {
-    entityId: number;
+    eid: number;
     x: number;
     y: number;
     r: number; // physics radius
@@ -16,8 +16,8 @@ export type IPlayerState = {
     nextMoveTick?: number;
     nextCanShoot: number;
 
-    mineralAmount: number;
-    ammoAmount: number;
+    mAmt: number;
+    aAmt: number;
 
     nodes: INodeState[],
 }

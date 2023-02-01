@@ -45,3 +45,7 @@ export function randomInUnitDisc() {
         y: Math.sin(angle) * r,
     };
 }
+
+export function threeDp(val: number) {
+    return Math.floor(val * 1000) / 1000;
+}

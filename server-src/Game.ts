@@ -21,6 +21,7 @@ import { INodeState } from '../model/Node';
 import { IResourceState } from '../model/Resource';
 import { IPacketState } from '../model/Packet';
 import { getUniqueID } from '../model/UniqueID';
+import { threeDp } from '../utils/utils';
 
 
 const verbose = Debug('shroom-io:Game:verbose');
@@ -141,6 +142,11 @@ export class Game {
             return;
         }
 
+        for (const node of this.getNodesByPlayerId(leavingPlayer.entityId)) {
+            node.destroyPhysics(this.physicsSystem);
+            this.distanceMatrix.removeTransform(node);
+        }
+
         leavingPlayer.destroyPhysics(this.physicsSystem);
         this.distanceMatrix.removeTransform(leavingPlayer);
         this.players.splice(this.players.indexOf(leavingPlayer), 1);
@@ -167,9 +173,9 @@ export class Game {
             })
             .map(player => {
                 return {
-                    entityId: player.entityId,
-                    x: player.x,
-                    y: player.y,
+                    eid: player.entityId,
+                    x: threeDp(player.x),
+                    y: threeDp(player.y),
                     r: player.r, // radius
 
                     name: player.name,
@@ -178,22 +184,25 @@ export class Game {
                     isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
                     nextMoveTick: player.nextMoveTick,
                     nextCanShoot: player.nextCanShoot,
-                    mineralAmount: player.mineralAmount,
-                    ammoAmount: player.ammoAmount,
+                    mAmt: player.mineralAmount,
+                    aAmt: player.ammoAmount,
 
                     nodes: this.getNodesByPlayerId(player.entityId).map(n => n.toStateObject()),
                 } as IPlayerState;
             })
         );
 
-        const resourceStates = this.resources.map(resource => resource.toStateObject());
-        const packetStates = this.packets.slice();
+        const resourceStates = this.resources
+            .filter(resource => {
+                if (!isFullState && this.distanceMatrix.getDistanceBetween(existingPlayer, resource) > 300) return false;
+                return true;
+            })
+            .map(resource => resource.toStateObject());
 
         return {
             tick: this.fixedElapsedTime,
             playerStates,
             resourceStates,
-            packetStates,
         };
     }
 
@@ -201,7 +210,7 @@ export class Game {
         const player = this.getPlayerById(clientId);
         // TODO: do some checkings; reject some commands like too far or no money;
         // TODO: send some return message if not possible
-
+        log('onPlayerCreateNode', x, y);
         this.spawnNode(x, y, playerEntityId, parentNodeId);
     }
 
@@ -288,7 +297,7 @@ export class Game {
     spawnNode(x: number, y: number, playerEntityId: number, parentNodeId: number) {
         log('spawnNode');
 
-        const node = Node.create(playerEntityId, parentNodeId);
+        const node = Node.create(playerEntityId, parentNodeId, this.fixedElapsedTime);
         if (node) this.nodes.push(node);
         node.x = x;
         node.y = y;
@@ -302,12 +311,15 @@ export class Game {
         log('spawnResource');
 
         const padding = SPAWN_PADDING;
-        const { x, y } = this.getRandomPosition(
+        let { x, y } = this.getRandomPosition(
             { x: padding, y: padding },
             { x: WORLD_WIDTH - padding, y: WORLD_HEIGHT - padding },
             400,
             this.resources
         );
+
+        x = threeDp(x);
+        y = threeDp(y);
 
         log(`spawnResource at (${x}, ${y})`);
         const resource = Resource.create(500);

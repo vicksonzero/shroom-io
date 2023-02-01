@@ -110,6 +110,7 @@ export class MainScene extends Phaser.Scene {
     inventoryUi: Container;
     inventoryIcons: Container;
 
+    homeButton: Container;
     zoomButton: Container;
     zoomIndicator: Image;
     isZoomMode: boolean;
@@ -560,7 +561,39 @@ export class MainScene extends Phaser.Scene {
         });
 
         this.inventoryUi.add([
-            this.zoomButton = this.make.container({ x: 0, y: 0 }).add([
+            this.homeButton = this.make.container({ x: 0, y: 0 }).add([
+                this.make.image({
+                    x: 0, y: 0,
+                    key: 'structure_house',
+                })
+                    .setTint(0x000000)
+                    .setOrigin(0, 0),
+            ])
+                .setInteractive({
+                    hitArea: new Phaser.Geom.Rectangle(0, 0, 64, 64),
+                    hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+                    draggable: false,
+                    dropZone: false,
+                    useHandCursor: false,
+                    cursor: 'pointer',
+                    pixelPerfect: false,
+                    alphaTolerance: 1
+                })
+                .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    (this.homeButton.list[0] as Image).setTint(0x666666);
+                    event.stopPropagation();
+                })
+                .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    console.log('pointerdown');
+
+                    (this.homeButton.list[0] as Image).setTint(0x000000);
+                    if (this.mainPlayer) {
+                        this.mainCamera.centerOn(this.mainPlayer.x, this.mainPlayer.y);
+                    }
+                    event.stopPropagation();
+                })
+            ,
+            this.zoomButton = this.make.container({ x: 64, y: 0 }).add([
                 this.make.image({
                     x: 0, y: 0,
                     key: 'zoom',
@@ -580,6 +613,7 @@ export class MainScene extends Phaser.Scene {
                 })
                 .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                     (this.zoomButton.list[0] as Image).setTint(0x666666);
+                    event.stopPropagation();
                 })
                 .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                     console.log('pointerdown');

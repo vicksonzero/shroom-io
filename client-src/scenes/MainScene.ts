@@ -11,11 +11,8 @@ import { GameObjects } from 'phaser';
 import { preload as _assets_preload, setUpAudio as _assets_setUpAudio } from '../assets';
 import { config, ItemType } from '../config/config';
 import {
-    BASE_LINE_WIDTH, BULLET_SPEED,
     DEBUG_DISABLE_SPAWNING, DEBUG_PHYSICS,
     PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, PIXEL_TO_METER,
-    PLAYER_MOVE_SPEED,
-    SPAWN_DELAY, SPAWN_INTERVAL,
     WORLD_WIDTH, WORLD_HEIGHT,
     CAMERA_WIDTH, CAMERA_HEIGHT,
     WS_URL,
@@ -113,8 +110,14 @@ export class MainScene extends Phaser.Scene {
     homeButton: Container;
     zoomButton: Container;
     zoomIndicator: Image;
-    isZoomMode: boolean;
+    isPanMode: boolean;
+    isPanning: boolean;
     zoomStart = { x: 0, y: 0 };
+
+
+
+    buildUi: Container;
+    buildUiButtonsLayer: Container;
 
     // sfx_shoot: BaseSound;
     // sfx_hit: BaseSound;
@@ -238,7 +241,8 @@ export class MainScene extends Phaser.Scene {
         this.initSocket();
         _assets_setUpAudio.call(this);
         log('create');
-        this.isZoomMode = false;
+        this.isPanMode = false;
+        this.isPanning = false;
         this.mainCamera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         this.fixedTime = new Phaser.Time.Clock(this);
         this.fixedElapsedTime = 0;
@@ -411,10 +415,12 @@ export class MainScene extends Phaser.Scene {
             this.socket.volatile.emit(CMD_PING, data);
         };
 
+        // clickRect is below all items
         const clickRect = this.add.graphics();
         clickRect.fillStyle(0xFFFFFF, 0.01);
         clickRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 
+        // clickRect is above all items
         const zoomRect = this.add.graphics();
         zoomRect.fillStyle(0xFFFFFF, 0.01);
         zoomRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
@@ -428,18 +434,23 @@ export class MainScene extends Phaser.Scene {
             .setScale(4)
             .setAlpha(0.4);
         ;
-        this.zoomIndicator.setVisible(this.isZoomMode);
+        this.zoomIndicator.setVisible(this.isPanMode);
 
 
         this.cameraInputLayer.add([
             clickRect,
-        ])
+        ]);
+
+        this.buildUi = this.createBuildUi();
+        this.hideBuildUi();
+
         this.uiLayer.add([
             this.coordinateLabel,
             this.pingMeter,
             zoomRect,
             this.inventoryUi,
             this.zoomIndicator,
+            this.buildUi,
         ]);
 
 
@@ -456,11 +467,19 @@ export class MainScene extends Phaser.Scene {
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
                 console.log('clickRect pointerdown');
+                this.zoomStart = {
+                    x: pointer.x,
+                    y: pointer.y,
+                };
+                this.isPanning = true;
+                console.log('this.isPanning', this.isPanning);
 
             })
             .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 // ...
                 console.log('clickRect pointerup', pointer.x, pointer.y);
+                this.isPanning = false;
+                console.log('this.isPanning', this.isPanning);
                 this.handleNodeBuilder(pointer);
             });
 
@@ -477,17 +496,19 @@ export class MainScene extends Phaser.Scene {
         })
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 console.log('zoomRect POINTER_DOWN');
-                if (this.isZoomMode && (pointer.buttons & 1)) {
+                if (this.isPanMode && (pointer.buttons & 1)) {
                     this.zoomStart = {
                         x: pointer.x,
                         y: pointer.y,
                     };
+                    this.isPanning = true;
+                    console.log('this.isPanning', this.isPanning);
                     event.stopPropagation();
                 }
 
             })
             .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                if (this.isZoomMode && (pointer.buttons & 1)) {
+                if (this.isPanning && (pointer.buttons & 1)) {
                     console.log('zoomRect POINTER_MOVE dragged');
                     this.mainCamera.scrollX += this.zoomStart.x - pointer.x;
                     this.mainCamera.scrollY += this.zoomStart.y - pointer.y;
@@ -499,8 +520,10 @@ export class MainScene extends Phaser.Scene {
                 }
             })
             .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                if (this.isZoomMode && (pointer.buttons & 1)) {
+                if (this.isPanMode && (pointer.buttons & 1)) {
                     console.log('zoomRect POINTER_UP', pointer.x, pointer.y);
+                    this.isPanning = false;
+                    console.log('this.isPanning', this.isPanning);
                     event.stopPropagation();
                 }
             });
@@ -623,8 +646,8 @@ export class MainScene extends Phaser.Scene {
                 .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                     console.log('pointerdown');
 
-                    this.isZoomMode = !this.isZoomMode;
-                    this.zoomIndicator.setVisible(this.isZoomMode);
+                    this.isPanMode = !this.isPanMode;
+                    this.zoomIndicator.setVisible(this.isPanMode);
                     (this.zoomButton.list[0] as Image).setTint(0x000000);
                     event.stopPropagation();
                 })
@@ -655,6 +678,55 @@ export class MainScene extends Phaser.Scene {
 
     updateInventoryUi(playerState: IPlayerState) {
     }
+    createBuildUi() {
+        const buildUiRect = this.add.graphics();
+        buildUiRect.fillStyle(0x000000, 0.4);
+        buildUiRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
+
+        this.buildUi = this.make.container({ x: 0, y: 0 }).add([
+            buildUiRect,
+            this.buildUiButtonsLayer = this.make.container({ x: 0, y: 0 }),
+        ])
+            .setInteractive({
+                hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT),
+                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+                draggable: false,
+                dropZone: false,
+                useHandCursor: false,
+                cursor: 'pointer',
+                pixelPerfect: false,
+                alphaTolerance: 1
+            })
+            .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('buildUi POINTER_DOWN');
+                event.stopPropagation();
+            })
+            .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('buildUi POINTER_MOVE');
+                event.stopPropagation();
+            })
+            .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                console.log('buildUi POINTER_UP');
+
+                this.hideBuildUi();
+
+                event.stopPropagation();
+            });
+
+
+        return this.buildUi;
+    }
+
+    showBuildUi(node: Node | Player) {
+        this.buildUi.setVisible(true);
+        this.buildUiButtonsLayer.add([
+
+        ]);
+    }
+    hideBuildUi() {
+        this.buildUiButtonsLayer.removeAll(true);
+        this.buildUi.setVisible(false);
+    }
 
     updateEntities(fixedTime: number, frameSize: number) {
         for (const entity of Object.values(this.entityList)) {
@@ -673,6 +745,10 @@ export class MainScene extends Phaser.Scene {
             if (node.nextCanShoot > Date.now()) continue;
             node.nextCanShoot = Date.now() + 5000;
 
+            const player = this.entityList[node.playerId];
+            if (!player) continue;
+
+
             const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
 
             const resourceResult = closestEntities
@@ -684,9 +760,6 @@ export class MainScene extends Phaser.Scene {
             const [resource, dist] = resourceResult as [Resource, number];
             log(`resourceResult r-${resource.entityId} dist=${dist}`);
             if (dist > 100) continue;
-
-            const player = this.entityList[node.playerId];
-            if (!player) continue;
 
             // spawn effect
             this.spawnPacketEffect({
@@ -856,7 +929,7 @@ export class MainScene extends Phaser.Scene {
 
         if (distance < BUILD_RADIUS_MIN) {
             console.log('handleNodeBuilder upgrade');
-
+            this.showBuildUi(parentNode as Node | Player);
         } else {
             this.socket.emit(CMD_CREATE_NODE, {
                 x: threeDp(this.nodeBuilder.x),

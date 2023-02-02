@@ -24,6 +24,16 @@ How To Play
 Local dev
 =====================
 
+First time:
+```bash
+npm i -g typescript@4.7.4
+
+# test with...
+tsc --version
+# >>Version 4.7.4
+npm install
+```
+
 Server:
 ```bash
 npm start

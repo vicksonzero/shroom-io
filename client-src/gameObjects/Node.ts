@@ -82,10 +82,12 @@ export class Node extends Phaser.GameObjects.Container {
     }
 
     init(state: INodeState): this {
-        const { eid: entityId, x, y, r, parEid, plEid: playerEntityId, birthday } = state;
+        const { eid: entityId, x, y, r, parEid: parentNodeId, plEid: playerEntityId, birthday } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
+        this.playerId = playerEntityId;
+        this.parentNodeId = parentNodeId;
         this.birthday = birthday;
         this.setPosition(x, y);
         this.r = r;

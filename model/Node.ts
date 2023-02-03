@@ -34,17 +34,17 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
     'converter': {
         key: 'chess_pawn',
         scale: 0.7,
-        origin: [0.5, 0.8],
+        origin: [0.5, 0.9],
     },
     'shooter': {
         key: 'chess_knight',
         scale: 0.8,
-        origin: [0.5, 0.8],
+        origin: [0.5, 0.9],
     },
     'swarm': {
         key: 'chess_rook',
         scale: 0.8,
-        origin: [0.5, 0.8],
+        origin: [0.5, 0.9],
     },
 };
 

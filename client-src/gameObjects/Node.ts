@@ -40,6 +40,7 @@ export class Node extends Phaser.GameObjects.Container {
     diceCountIcon: Image;
     diceCountLabel: Text;
     bodySprite: Image;
+    baseGraphics: Graphics;
 
     fixtureDef?: b2FixtureDef;
     bodyDef?: b2BodyDef;
@@ -66,6 +67,9 @@ export class Node extends Phaser.GameObjects.Container {
     createSprite() {
         const { key, scale, origin } = nodeSprites['bud'];
         this.add([
+            this.baseGraphics = this.scene.make.graphics({
+                x: 0, y: 0
+            }, false),
             this.bodySprite = this.scene.make.image({
                 x: 0, y: 0,
                 key,
@@ -104,7 +108,12 @@ export class Node extends Phaser.GameObjects.Container {
         if (color) {
             this.tint = color;
             this.bodySprite.setTint(this.tint);
+
+
         }
+        this.baseGraphics.clear();
+        this.baseGraphics.fillStyle(0xaaaaaa, 0.8);
+        this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * 0.7);
 
         this.setName(`Node ${this.entityId} (of ${playerEntityId}) ${isControlling ? '(Me)' : ''}`);
 

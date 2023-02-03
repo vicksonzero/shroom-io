@@ -1,4 +1,4 @@
-import { getPhysicsDefinitions, INodeState } from '../model/Node';
+import { getPhysicsDefinitions, INodeState, NodeType } from '../model/Node';
 import { getUniqueID } from '../model/UniqueID';
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2FixtureDef, b2Vec2, b2World, XY } from "@flyover/box2d";
 import { PIXEL_TO_METER } from "./constants.js";
@@ -34,6 +34,9 @@ export class Node {
     public parentNodeId: number;
     public birthday: number;
 
+    public nodeType: NodeType;
+    public hp: 100;
+    public maxHp: 100;
 
     // physics
     public x = 0;
@@ -59,13 +62,17 @@ export class Node {
     constructor() {
         this.entityId = getUniqueID();
     }
-    static create(playerId: number, parentNodeId: number, birthday: number) {
+    static create(playerId: number, parentNodeId: number, birthday: number, nodeType: NodeType = 'bud') {
         const result = new Node();
         result.name = `Node of ${playerId}`;
 
         result.playerEntityId = playerId;
         result.parentNodeId = parentNodeId;
         result.birthday = birthday;
+
+        result.nodeType = nodeType;
+        result.hp = 100;
+        result.maxHp = 100;
 
         return result;
     }
@@ -118,6 +125,9 @@ export class Node {
             plEid: this.playerEntityId,
             parEid: this.parentNodeId,
             birthday: this.birthday,
+            nodeType: this.nodeType,
+            hp: this.hp,
+            maxHp: this.maxHp,
         } as INodeState;
     }
 }

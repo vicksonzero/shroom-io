@@ -1,4 +1,5 @@
 import { XY } from "@flyover/box2d";
+import { NodeType } from "./Node";
 
 export const CMD_IO_DISCONNECT = 'disconnect';
 export const CMD_START = 'CMD_START';
@@ -12,6 +13,12 @@ export type CreateNodeMessage = {
     y: number;
     playerEntityId: number;
     parentNodeId: number;
+}
+
+export const CMD_MORPH_NODE = 'CMD_MORPH_NODE';
+export type MorphNodeMessage = {
+    entityId: number;
+    toNodeType: NodeType;
 }
 
 

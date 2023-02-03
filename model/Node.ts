@@ -1,6 +1,7 @@
 import { b2FixtureDef, b2CircleShape, b2BodyDef, b2BodyType } from "@flyover/box2d";
 import { collisionCategory } from "../model/collisionCategory";
 
+export type NodeType = 'root' | 'bud' | 'converter' | 'shooter' | 'swarm';
 export type INodeState = {
     eid: number,
     x: number,
@@ -13,6 +14,38 @@ export type INodeState = {
 
     mAmt: number, // mineralAmount
     aAmt: number, // ammoAmount
+
+    nodeType: NodeType;
+    hp: 100;
+    maxHp: 100;
+};
+
+export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origin: [number, number] } } = {
+    'root': {
+        key: 'structure_house',
+        scale: 0.6,
+        origin: [0.5, 0.7],
+    },
+    'bud': {
+        key: 'pawn',
+        scale: 0.5,
+        origin: [0.5, 0.8],
+    },
+    'converter': {
+        key: 'chess_pawn',
+        scale: 0.7,
+        origin: [0.5, 0.8],
+    },
+    'shooter': {
+        key: 'chess_knight',
+        scale: 0.8,
+        origin: [0.5, 0.8],
+    },
+    'swarm': {
+        key: 'chess_rook',
+        scale: 0.8,
+        origin: [0.5, 0.8],
+    },
 };
 
 export const getPhysicsDefinitions = (radius: number) => {

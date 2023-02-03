@@ -27,9 +27,9 @@ import { capitalize, lerpRadians, threeDp } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PongMessage, StateMessage } from '../../model/EventsFromServer';
-import { CMD_CHEAT, CMD_CREATE_NODE, CMD_PING, CMD_START, CreateNodeMessage, StartMessage } from '../../model/EventsFromClient';
+import { CMD_CHEAT, CMD_CREATE_NODE, CMD_MORPH_NODE, CMD_PING, CMD_START, CreateNodeMessage, MorphNodeMessage, StartMessage } from '../../model/EventsFromClient';
 import { IPlayerState } from '../../model/Player';
-import { INodeState } from '../../model/Node';
+import { INodeState, nodeSprites } from '../../model/Node';
 import { IResourceState } from '../../model/Resource';
 import { IPacketState } from '../../model/Packet';
 
@@ -117,6 +117,7 @@ export class MainScene extends Phaser.Scene {
 
 
     buildUi: Container;
+    buildUiInfoLayer: Container;
     buildUiButtonsLayer: Container;
 
     // sfx_shoot: BaseSound;
@@ -653,25 +654,6 @@ export class MainScene extends Phaser.Scene {
                 })
             ,
         ]);
-        // .on('pointerover', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-        //     console.log('pointerover');
-        // })
-        // .on('pointerout', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-        //     console.log('pointerover');
-        // })
-        // .on('pointerdown', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-        //     console.log('pointerdown');
-        //     console.log(event);
-        //     event.stopPropagation();
-        // })
-        // .on('pointerup', (pointer: Pointer, localX: number, localY: number, event: EventData) => {
-        //     console.log('pointerup');
-        //     console.log(event);
-        //     event.stopPropagation();
-
-        //     this.socket.emit('drop-dice', { slotId: 0 });
-        // })
-        ;
 
         return this.inventoryUi;
     }
@@ -680,33 +662,34 @@ export class MainScene extends Phaser.Scene {
     }
     createBuildUi() {
         const buildUiRect = this.add.graphics();
-        buildUiRect.fillStyle(0x000000, 0.4);
+        buildUiRect.fillStyle(0x000000, 0.6);
         buildUiRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 
         this.buildUi = this.make.container({ x: 0, y: 0 }).add([
             buildUiRect,
+            this.buildUiInfoLayer = this.make.container({ x: 0, y: 0 }),
             this.buildUiButtonsLayer = this.make.container({ x: 0, y: 0 }),
-        ])
-            .setInteractive({
-                hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT),
-                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-                draggable: false,
-                dropZone: false,
-                useHandCursor: false,
-                cursor: 'pointer',
-                pixelPerfect: false,
-                alphaTolerance: 1
-            })
+        ]);
+        buildUiRect.setInteractive({
+            hitArea: new Phaser.Geom.Rectangle(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT),
+            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+            draggable: false,
+            dropZone: false,
+            useHandCursor: false,
+            cursor: 'pointer',
+            pixelPerfect: false,
+            alphaTolerance: 1
+        })
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                console.log('buildUi POINTER_DOWN');
+                console.log('buildUiRect POINTER_DOWN');
                 event.stopPropagation();
             })
             .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                console.log('buildUi POINTER_MOVE');
+                console.log('buildUiRect POINTER_MOVE');
                 event.stopPropagation();
             })
             .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
-                console.log('buildUi POINTER_UP');
+                console.log('buildUiRect POINTER_UP');
 
                 this.hideBuildUi();
 
@@ -719,14 +702,173 @@ export class MainScene extends Phaser.Scene {
 
     showBuildUi(node: Node | Player) {
         this.buildUi.setVisible(true);
-        this.buildUiButtonsLayer.add([
+        const buttons = [];
 
-        ]);
+        if (node instanceof Player && node.isControlling) {
+            this.buildUiInfoLayer.add([
+                this.make.text({ x: 0, y: 30, text: 'Root', style: { align: 'center' }, origin: 0.5 }),
+            ]);
+            buttons.push(...[
+                this.make.image({ key: 'cross', }).setName('Back'),
+            ]);
+        } else if (node instanceof Node && node.nodeType === 'bud') {
+            this.buildUiInfoLayer.add([
+                this.make.text({ x: 0, y: 30, text: 'Bud', style: { align: 'center' }, origin: 0.5 }),
+                this.make.text({ x: 0, y: 48, text: `HP: ${node.hp}/${node.maxHp}`, style: { align: 'center' }, origin: 0.5 }),
+            ]);
+            buttons.push(...[
+                this.make.image({ key: 'cross', }).setName('Back'),
+                this.make.image({ key: 'trash', }).setName('Kill'),
+                this.make.image({ key: 'chess_pawn', }).setName('Converter'),
+                this.make.image({ key: 'chess_knight', }).setName('Shooter'),
+                this.make.image({ key: 'chess_rook', }).setName('Swarm'),
+            ]);
+        } else if (node instanceof Node && node.nodeType === 'converter') {
+            buttons.push(...[
+                this.make.image({ key: 'cross', }).setName('Back'),
+                this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
+                // this.make.image({ key: 'pawn_up' }).setName('Upgrades'),
+            ]);
+        } else if (node instanceof Node && node.nodeType === 'shooter') {
+            buttons.push(...[
+                this.make.image({ key: 'cross', }).setName('Back'),
+                this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
+                // this.make.image({ key: 'pawn_up' }).setName('Upgrades'),
+            ]);
+        } else if (node instanceof Node && node.nodeType === 'swarm') {
+            buttons.push(...[
+                this.make.image({ key: 'cross', }).setName('Back'),
+                this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
+                // this.make.image({ key: 'pawn_up' }).setName('Upgrades'),
+            ]);
+        }
+
+        let angle = Math.PI / 2;
+        let radius = 80;
+        for (const button of buttons) {
+            button.setPosition(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius
+            );
+            angle -= Math.PI / 4;
+            this.buildUiInfoLayer.add([
+                this.make.text({
+                    x: button.x, y: button.y + 28,
+                    text: button.name,
+                    style: { align: 'center' },
+                    origin: 0.5
+                }),
+            ]);
+        }
+
+        for (const button of buttons) {
+            let buttonIsDown = false;
+            button
+                .setScale(0.6)
+                .setTint(0xaaffff)
+                .setInteractive({
+                    hitArea: new Phaser.Geom.Circle(20, 20, 40),
+                    hitAreaCallback: Phaser.Geom.Circle.Contains,
+                    draggable: false,
+                    dropZone: false,
+                    useHandCursor: false,
+                    cursor: 'pointer',
+                    pixelPerfect: false,
+                    alphaTolerance: 1
+                })
+                .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    // console.log(`button ${button.name} POINTER_DOWN`);
+                    buttonIsDown = true;
+                    button.setTint(0xaaaaaa);
+                    event.stopPropagation();
+                })
+                .on(POINTER_MOVE, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    if (!buttonIsDown) return;
+                    event.stopPropagation();
+                })
+                .on(POINTER_UP, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
+                    // console.log(`button ${button.name} POINTER_UP`);
+                    if (!buttonIsDown) return;
+                    buttonIsDown = false;
+                    button.setTint(0xffffff);
+
+                    this.handleBuildButtonClicked(button, node);
+
+                    event.stopPropagation();
+                });
+        }
+        this.buildUiButtonsLayer.add(buttons);
+        this.buildUiButtonsLayer.setPosition(
+            node.x - this.mainCamera.scrollX,
+            node.y - this.mainCamera.scrollY,
+        );
+        this.buildUiInfoLayer.setPosition(
+            node.x - this.mainCamera.scrollX,
+            node.y - this.mainCamera.scrollY,
+        );
+
+
+        const { key, scale, origin } = nodeSprites[node.nodeType];
+        this.buildUiButtonsLayer.add(
+            this.make.image({ key })
+                .setTexture(key)
+                .setScale(scale)
+                .setOrigin(...origin)
+        )
     }
     hideBuildUi() {
+        this.buildUiInfoLayer.removeAll(true);
         this.buildUiButtonsLayer.removeAll(true);
         this.buildUi.setVisible(false);
     }
+    handleBuildButtonClicked(button: Phaser.GameObjects.GameObject, node: Node | Player) {
+        console.log('handleBuildButtonClicked', button.name);
+        switch (button.name) {
+            case 'Back': {
+                this.hideBuildUi();
+            } break;
+            case 'Kill': {
+
+            } break;
+            case 'Converter': {
+                this.socket.emit(CMD_MORPH_NODE, {
+                    entityId: node.entityId,
+                    toNodeType: 'converter',
+                } as MorphNodeMessage);
+
+                this.hideBuildUi();
+            } break;
+            case 'Shooter': {
+                this.socket.emit(CMD_MORPH_NODE, {
+                    entityId: node.entityId,
+                    toNodeType: 'shooter',
+                } as MorphNodeMessage);
+
+                this.hideBuildUi();
+            } break;
+            case 'Swarm': {
+                this.socket.emit(CMD_MORPH_NODE, {
+                    entityId: node.entityId,
+                    toNodeType: 'swarm',
+                } as MorphNodeMessage);
+
+                this.hideBuildUi();
+            } break;
+            case 'Downgrade': {
+                this.socket.emit(CMD_MORPH_NODE, {
+                    entityId: node.entityId,
+                    toNodeType: 'bud',
+                } as MorphNodeMessage);
+
+                this.hideBuildUi();
+            } break;
+            case 'Upgrades': {
+
+            } break;
+        }
+    }
+
+
 
     updateEntities(fixedTime: number, frameSize: number) {
         for (const entity of Object.values(this.entityList)) {
@@ -862,7 +1004,7 @@ export class MainScene extends Phaser.Scene {
         console.log(`spawnNodeBuilder x: ${x}, y: ${y}, r: ${r}, playerId: ${playerId}, parentNodeId: ${parentNodeId})`);
 
         this.playerLayer.add(this.nodeBuilder);
-        this.nodeBuilder.init(x, y, r, playerId, parentNodeId);
+        this.nodeBuilder.init(x, y, r, playerId, parentNodeId, 'bud');
 
         // this.input.on('pointerup', (pointer: any, currentlyOver: any) => {
         //     log('global pointerup', pointer, currentlyOver);

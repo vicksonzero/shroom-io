@@ -218,3 +218,4 @@ Multiplayer Architecture
 - Kenney.nl (again, for hopefully placeholders only this time)!!!
 - https://free-game-assets.itch.io/48-free-minerals-pixel-art-icons-pack (Free download, [License](https://craftpix.net/file-licenses/))
 - https://iconduck.com/icons/19815/binoculars (Unlicensed)
+- <a href="https://www.flaticon.com/free-icons/trash" title="trash icons">Trash icons created by Becris - Flaticon</a> (Free to use with this notice)

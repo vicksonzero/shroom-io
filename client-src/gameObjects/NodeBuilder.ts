@@ -5,7 +5,7 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { getPhysicsDefinitions, INodeState } from '../../model/Node';
+import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
 
 
@@ -22,6 +22,7 @@ type Graphics = Phaser.GameObjects.Graphics;
 export class NodeBuilder extends Phaser.GameObjects.Container {
     // entity
     scene: MainScene;
+    nodeType: NodeType;
     playerEntityId: number;
     parentNodeId: number;
 
@@ -46,7 +47,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
             }),
             this.nodeImage = this.scene.make.image({
                 x: 0, y: 0,
-                key: 'hexagon',
+                key: 'pawn',
             }, false),
             this.bodyGraphics = this.scene.make.graphics({
                 x: 0, y: 0,
@@ -64,29 +65,38 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
 
         ]);
 
-        this.nodeImage.setScale(0.6);
+
+        this.nodeImage.setScale(0.5);
 
         this.nameTag.setOrigin(0.5, 1);
         this.nameTag.setText('NodeBuilder');
     }
 
-    init(x: number, y: number, r: number, playerEntityId: number, parentNodeId: number): this {
+    init(x: number, y: number, r: number, playerEntityId: number, parentNodeId: number, nodeType: NodeType): this {
         // console.log(`init ${name} (${x}, ${y})`);
 
         this.setPosition(x, y);
         this.r = r;
         this.playerEntityId = playerEntityId;
         this.parentNodeId = parentNodeId;
+        this.nodeType = nodeType;
 
         const isControlling = false;
 
         this.setName(`NodeBuilder ${playerEntityId} ${isControlling ? '(Me)' : ''}`);
 
 
+
+        const { key, scale, origin } = nodeSprites[this.nodeType];
+        this.nodeImage
+            .setTexture(key)
+            .setScale(scale)
+            .setOrigin(...origin)
+
         const color = 0xff0000;
         this.bodyGraphics.clear();
         this.bodyGraphics.lineStyle(2, color, 1);
-        this.bodyGraphics.strokeCircle(0, 0, this.r);
+        this.bodyGraphics.strokeCircle(0, 0, this.r * 1.5);
 
         const parentNode = this.scene.entityList[this.parentNodeId];
         if (parentNode) {

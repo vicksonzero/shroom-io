@@ -5,7 +5,7 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { getPhysicsDefinitions, INodeState } from '../../model/Node';
+import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
 
 
@@ -45,11 +45,16 @@ export class Node extends Phaser.GameObjects.Container {
     bodyDef?: b2BodyDef;
     b2Body?: b2Body;
 
+    nodeType: NodeType;
+    hp: 100;
+    maxHp: 100;
+
     // debug
     _debugShowEntityId = false;
 
     syncData = {
         x: 0, y: 0,
+        nodeType: '' as NodeType,
     };
 
     constructor(scene: MainScene) {
@@ -59,10 +64,11 @@ export class Node extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
+        const { key, scale, origin } = nodeSprites['bud'];
         this.add([
             this.bodySprite = this.scene.make.image({
                 x: 0, y: 0,
-                key: 'hexagon',
+                key,
             }, false),
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
@@ -76,7 +82,8 @@ export class Node extends Phaser.GameObjects.Container {
             // }),
         ]);
         this.bodySprite.setTint(this.tint);
-        this.bodySprite.setScale(0.6);
+        this.bodySprite.setScale(scale);
+        this.bodySprite.setOrigin(...origin);
 
         this.nameTag.setOrigin(0.5, 1);
     }
@@ -164,16 +171,19 @@ export class Node extends Phaser.GameObjects.Container {
             eid: entityId,
             plEid: playerEntityId,
             parEid,
+            nodeType,
+            hp,
+            maxHp,
         } = state;
 
-
-        this.syncData = {
-            x, y,
-        };
 
         this.entityId = entityId;
         this.playerId = playerEntityId;
         this.parentNodeId = parEid;
+
+        this.nodeType = nodeType;
+        this.hp = hp;
+        this.maxHp = maxHp;
 
         if (!isSmooth) {
             this.x = x;
@@ -186,10 +196,21 @@ export class Node extends Phaser.GameObjects.Container {
             ); // TODO: lerp instead of set
         }
 
+        if (nodeType != this.syncData.nodeType) {
+            const { key, scale, origin } = nodeSprites[nodeType];
+            this.bodySprite.setTexture(key);
+            this.bodySprite.setScale(scale);
+            this.bodySprite.setOrigin(...origin);
+        }
         // this.nameTag.setText(this.name);
 
         // console.log(diceColors);
 
+
+        this.syncData = {
+            x, y,
+            nodeType,
+        };
 
 
         // this.debugText?.setText(this.isControlling

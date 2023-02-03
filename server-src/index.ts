@@ -3,7 +3,7 @@ import { createServer } from "https";
 import { Server, Socket } from "socket.io"
 import { readFileSync } from 'fs'
 import { Game } from './Game.js'
-import { CMD_CHEAT, CMD_CREATE_NODE, CMD_DEBUG_INSPECT, CMD_IO_DISCONNECT, CMD_PING, CMD_START, CreateNodeMessage, DebugInspectMessage, PingMessage, StartMessage } from '../model/EventsFromClient'
+import { CMD_CHEAT, CMD_CREATE_NODE, CMD_DEBUG_INSPECT, CMD_IO_DISCONNECT, CMD_MORPH_NODE, CMD_PING, CMD_START, CreateNodeMessage, DebugInspectMessage, MorphNodeMessage, PingMessage, StartMessage } from '../model/EventsFromClient'
 import { USE_SSL, PORT_WSS, PORT_WS, PHYSICS_FRAME_SIZE } from './constants'
 import 'source-map-support/register'
 import * as Debug from 'debug';
@@ -100,6 +100,16 @@ io.on("connection", (socket: Socket) => {
             y,
             playerEntityId,
             parentNodeId);
+
+        sendState();
+    });
+    socket.on(CMD_MORPH_NODE, (data: MorphNodeMessage) => {
+        const { entityId, toNodeType } = data;
+
+        game.onPlayerMorphNode(
+            socket.id,
+            entityId,
+            toNodeType);
 
         sendState();
     });

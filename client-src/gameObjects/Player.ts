@@ -8,6 +8,7 @@ import { config } from '../config/config';
 import { IPlayerState } from '../../model/Player';
 import { getPhysicsDefinitions } from '../../model/Player';
 import { lerpRadians } from '../../utils/utils';
+import { nodeSprites, NodeType } from '../../model/Node';
 
 
 const log = Debug('shroom-io:Player:log');
@@ -40,6 +41,8 @@ export class Player extends Phaser.GameObjects.Container {
     mineralAmount = 0;
     ammoAmount = 0;
 
+    nodeType: NodeType = 'root';
+
     // sprites
     debugText?: Text;
     nameTag: Text;
@@ -67,13 +70,15 @@ export class Player extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
+        const { key, scale, origin } = nodeSprites[this.nodeType];
+
         this.add([
             this.edgeGraphics = this.scene.make.graphics({
                 x: 0, y: 0
             }, false),
             this.bodySprite = this.scene.make.image({
                 x: 0, y: 0,
-                key: 'structure_house',
+                key,
             }, false),
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
@@ -86,7 +91,10 @@ export class Player extends Phaser.GameObjects.Container {
             //     style: { align: 'left', color: '#000000' },
             // }),
         ]);
-        this.bodySprite.setTint(this.tint);
+        this.bodySprite
+            .setScale(scale)
+            .setOrigin(...origin)
+            .setTint(this.tint);
 
         this.nameTag.setOrigin(0.5, 1);
     }
@@ -101,7 +109,7 @@ export class Player extends Phaser.GameObjects.Container {
         if (color) {
             this.tint = color;
             this.bodySprite.setTint(this.tint);
-            this.edgeGraphics.lineStyle(3, color);
+            this.edgeGraphics.lineStyle(1, color);
         }
 
         this.isControlling = (isControlling == null ? this.isControlling : isControlling);

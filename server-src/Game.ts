@@ -17,7 +17,7 @@ import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
 import { names } from '../model/Names'
 import { IPlayerState } from '../model/Player';
-import { INodeState } from '../model/Node';
+import { INodeState, NodeType } from '../model/Node';
 import { IResourceState } from '../model/Resource';
 import { IPacketState } from '../model/Packet';
 import { getUniqueID } from '../model/UniqueID';
@@ -212,6 +212,18 @@ export class Game {
         // TODO: send some return message if not possible
         log('onPlayerCreateNode', x, y);
         this.spawnNode(x, y, playerEntityId, parentNodeId);
+    }
+
+    onPlayerMorphNode(clientId: string, entityId: number, toNodeType: NodeType) {
+        const player = this.getPlayerById(clientId);
+        if (!player) return;
+        const node = this.nodes.find(n => n.entityId === entityId);
+        if (!node) return;
+
+        // TODO: checking
+        // if (node.playerEntityId !== player.entityId) return;
+
+        node.nodeType = toNodeType;
     }
 
     getEntityList() {

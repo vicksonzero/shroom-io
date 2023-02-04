@@ -51,6 +51,7 @@ export function threeDp(val: number) {
 }
 
 const HSVToRGB = Phaser.Display.Color.HSVToRGB;
+const HSLToColor = Phaser.Display.Color.HSLToColor;
 export function hueToColor(hue: number, sat: number, val: number) {
     return (HSVToRGB(hue / 360, sat, val, new Phaser.Display.Color()) as Phaser.Display.Color).color;
 }

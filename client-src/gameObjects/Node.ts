@@ -127,10 +127,10 @@ export class Node extends Phaser.GameObjects.Container {
         const player = this.scene.entityList[this.playerEntityId] as Player;
         if (player) {
             this.hue = player.hue;
-            this.tint = hueToColor(this.hue, 0.5, 0.5);
+            this.tint = hueToColor(this.hue, 0.5, 0.7);
             this.teamSprite.setTint(this.tint);
 
-            const baseTint = hueToColor(this.hue, 0.3, 0.7);
+            const baseTint = hueToColor((this.hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
@@ -284,14 +284,14 @@ export class Node extends Phaser.GameObjects.Container {
     updateBaseGraphics() {
         const player = this.scene.entityList[this.playerEntityId] as Player;
         const color = player
-            ? hueToColor(player.hue, 0.5, 0.5)
+            ? hueToColor(player.hue, 0.5, 0.7)
             : 0xcccccc;
 
         this.tint = color;
         this.teamSprite.setTint(this.tint);
 
         const baseTint = player
-            ? hueToColor(player.hue, 0.3, 0.7)
+            ? hueToColor((player.hue + 30) % 360, 0.15, 0.8)
             : 0x999999;
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(baseTint, 0.8);

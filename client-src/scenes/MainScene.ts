@@ -583,8 +583,8 @@ export class MainScene extends Phaser.Scene {
             this.make.graphics({ x: 0, y: 0 })
                 .fillStyle(0xFFFFFF, 1)
                 .fillRect(0, 0, CAMERA_WIDTH, 64),
-            this.mineralsLabel = this.make.text({ x: CAMERA_WIDTH, y: -16, text: 'Minerals:', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
-            this.sporesLabel = this.make.text({ x: CAMERA_WIDTH, y: -16, text: 'Spore:', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
+            this.mineralsLabel = this.make.text({ x: CAMERA_WIDTH - 10, y: -32, text: 'Minerals: 0', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
+            this.sporesLabel = this.make.text({ x: CAMERA_WIDTH - 10, y: -16, text: 'Spore: 0', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
         ])
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 console.log('inventoryUi POINTER_DOWN');
@@ -680,6 +680,8 @@ export class MainScene extends Phaser.Scene {
     }
 
     updateInventoryUi(playerState: IPlayerState) {
+        this.mineralsLabel.setText(`Minerals: ${playerState.mAmt}`);
+        this.sporesLabel.setText(`Spore: ${playerState.aAmt}`);
     }
     createBuildUi() {
         const buildUiRect = this.add.graphics();
@@ -829,10 +831,10 @@ export class MainScene extends Phaser.Scene {
         );
 
 
-        const { key, scale, origin } = nodeSprites[node.nodeType];
+        const { key, scale, origin, baseIndex } = nodeSprites[node.nodeType];
         this.buildUiButtonsLayer.add(
             this.make.image({ key })
-                .setTexture(key)
+                .setTexture(key, baseIndex)
                 .setScale(scale)
                 .setOrigin(...origin)
         )

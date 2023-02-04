@@ -10,8 +10,21 @@ import { IFixtureUserData, IBodyUserData } from '../client-src/PhysicsSystem';
 import { Player } from './Player';
 import { Node } from './Node';
 import { Resource } from './Resource';
-import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
-import { ToggleShootingMessage, EVT_TOGGLE_SHOOTING, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, NodeKilledMessage, StateMessage } from '../model/EventsFromServer';
+import {
+    PHYSICS_FRAME_SIZE,
+    PHYSICS_MAX_FRAME_CATCHUP,
+    SPAWN_PADDING,
+    WORLD_HEIGHT,
+    WORLD_WIDTH
+} from './constants';
+import {
+    ToggleShootingMessage,
+    EVT_TOGGLE_SHOOTING,
+    EVT_NODE_KILLED,
+    EVT_PLAYER_DISCONNECTED,
+    NodeKilledMessage,
+    StateMessage
+} from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
 import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
@@ -24,6 +37,7 @@ import { IBulletState } from '../model/Bullet';
 import { getUniqueID } from '../model/UniqueID';
 import { threeDp } from '../utils/utils';
 import {
+    BUILD_RADIUS_MAX,
     BULLET_FLY_TIME,
     MINING_DISTANCE,
     MINING_INTERVAL,
@@ -228,6 +242,10 @@ export class Game {
         // TODO: collision checks
 
         // TODO: distance checks
+        const dx = parentNode.x - x;
+        const dy = parentNode.y - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > BUILD_RADIUS_MAX) return;
 
         // TODO: money checks
 

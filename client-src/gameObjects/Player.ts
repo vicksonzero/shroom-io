@@ -121,7 +121,7 @@ export class Player extends Phaser.GameObjects.Container {
         this.hpBar.init(this.hp, this.maxHp);
         if (hue) {
             console.log('hue', hue);
-            this.tint = hueToColor(hue, 0.5, 0.5);
+            this.tint = hueToColor(hue, 0.5, 0.7);
             this.bodySprite.setTint(this.tint);
             this.edgeGraphics.lineStyle(1, this.tint);
         }
@@ -224,11 +224,11 @@ export class Player extends Phaser.GameObjects.Container {
         }
 
         if (hue) {
-            this.tint = hueToColor(hue, 0.5, 0.5);
+            this.tint = hueToColor(hue, 0.5, 0.7);
             this.bodySprite.setTint(this.tint);
             this.edgeGraphics.lineStyle(1, this.tint);
 
-            const baseTint = hueToColor(hue, 0.3, 0.7);
+            const baseTint = hueToColor((hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);

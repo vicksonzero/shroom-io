@@ -119,6 +119,8 @@ export class MainScene extends Phaser.Scene {
     isPanMode: boolean;
     isPanning: boolean;
     zoomStart = { x: 0, y: 0 };
+    mineralsLabel: Text;
+    sporesLabel: Text;
 
 
 
@@ -580,7 +582,9 @@ export class MainScene extends Phaser.Scene {
         this.inventoryUi = this.make.container({ x: 0, y: CAMERA_HEIGHT - 64 }).add([
             this.make.graphics({ x: 0, y: 0 })
                 .fillStyle(0xFFFFFF, 1)
-                .fillRect(0, 0, CAMERA_WIDTH, 64)
+                .fillRect(0, 0, CAMERA_WIDTH, 64),
+            this.mineralsLabel = this.make.text({ x: CAMERA_WIDTH, y: -16, text: 'Minerals:', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
+            this.sporesLabel = this.make.text({ x: CAMERA_WIDTH, y: -16, text: 'Spore:', style: { align: 'center' }, origin: { x: 1, y: 1 } }),
         ])
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, event: EventControl) => {
                 console.log('inventoryUi POINTER_DOWN');

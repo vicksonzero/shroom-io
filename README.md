@@ -159,7 +159,7 @@ Multiplayer Architecture
 - [x] gather minerals.
 - [x] spend materials to build towers.
 - [x] The tower can shoot.
-- [ ] Nodes can die. 
+- [x] Nodes can die. 
 - [ ] Dead nodes reduce HP until they die, into resource nodes
 - [ ] Improve network traffic of mining.
 - [ ] perhaps edges should be invisible.

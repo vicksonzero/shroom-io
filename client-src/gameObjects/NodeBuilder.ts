@@ -91,9 +91,9 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
 
 
 
-        const { key, scale, origin } = nodeSprites[this.nodeType];
+        const { key, scale, origin, baseIndex } = nodeSprites[this.nodeType];
         this.nodeImage
-            .setTexture(key)
+            .setTexture(key, baseIndex)
             .setScale(scale)
             .setOrigin(...origin)
 

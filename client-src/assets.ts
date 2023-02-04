@@ -37,7 +37,8 @@ export function preload(this: Phaser.Scene) {
     this.load.image('zoom', './assets/iconduck/icons/binoculars_64x64.png'); // camera button
     this.load.image('trash', './assets/flaticon/trash_white.png'); // destroy button
     this.load.image('2x2', './assets/dicksonMD/2x2.png'); // destroy button
-    
+    this.load.spritesheet('mushrooms', './assets/jintii/mushrooms_e.png', { frameWidth: 64, frameHeight: 64 }); // destroy button
+
 
     // this.load.atlas('items_icon',
     //     './assets/sprites/dicksonmd/spritesheet (1).png',

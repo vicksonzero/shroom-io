@@ -42,6 +42,7 @@ export class Node extends Phaser.GameObjects.Container {
     diceCountIcon: Image;
     diceCountLabel: Text;
     bodySprite: Image;
+    teamSprite: Image;
     baseGraphics: Graphics;
     hpBar: HpBar;
 
@@ -55,7 +56,7 @@ export class Node extends Phaser.GameObjects.Container {
     hue: number;
 
     // debug
-    _debugShowEntityId = true;
+    _debugShowEntityId = false;
 
     syncData = {
         x: 0, y: 0,
@@ -75,7 +76,11 @@ export class Node extends Phaser.GameObjects.Container {
             this.baseGraphics = this.scene.make.graphics({
                 x: 0, y: 0
             }, false),
-            this.bodySprite = this.scene.make.image({
+            this.bodySprite = this.scene.make.sprite({
+                x: 0, y: 0,
+                key,
+            }, false),
+            this.teamSprite = this.scene.make.sprite({
                 x: 0, y: 0,
                 key,
             }, false),
@@ -91,7 +96,9 @@ export class Node extends Phaser.GameObjects.Container {
             //     style: { align: 'left', color: '#000000' },
             // }),
         ]);
-        this.bodySprite.setTint(this.tint);
+        this.teamSprite.setTint(this.tint);
+        this.teamSprite.setScale(scale);
+        this.teamSprite.setOrigin(...origin);
         this.bodySprite.setScale(scale);
         this.bodySprite.setOrigin(...origin);
         this.hpBar.setPosition(0, 16);
@@ -121,7 +128,7 @@ export class Node extends Phaser.GameObjects.Container {
         if (player) {
             this.hue = player.hue;
             this.tint = hueToColor(this.hue, 0.5, 0.5);
-            this.bodySprite.setTint(this.tint);
+            this.teamSprite.setTint(this.tint);
 
             const baseTint = hueToColor(this.hue, 0.3, 0.7);
             this.baseGraphics.clear();
@@ -129,10 +136,14 @@ export class Node extends Phaser.GameObjects.Container {
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
         }
 
-        const { key, scale, origin } = nodeSprites[nodeType];
-        this.bodySprite.setTexture(key);
+        const { key, scale, origin, baseIndex, teamIndex } = nodeSprites[nodeType];
+        this.bodySprite.setTexture(key, baseIndex);
         this.bodySprite.setScale(scale);
         this.bodySprite.setOrigin(...origin);
+        this.teamSprite.setTexture(key, teamIndex);
+        this.teamSprite.setScale(scale);
+        this.teamSprite.setOrigin(...origin);
+
         this.syncData.nodeType = nodeType;
 
         this.setName(`Node ${this.entityId} (of ${playerEntityId}) ${isControlling ? '(Me)' : ''}`);
@@ -227,10 +238,13 @@ export class Node extends Phaser.GameObjects.Container {
         }
 
         if (nodeType != this.syncData.nodeType) {
-            const { key, scale, origin } = nodeSprites[nodeType];
-            this.bodySprite.setTexture(key);
+            const { key, scale, origin, baseIndex, teamIndex } = nodeSprites[nodeType];
+            this.bodySprite.setTexture(key, baseIndex);
             this.bodySprite.setScale(scale);
             this.bodySprite.setOrigin(...origin);
+            this.teamSprite.setTexture(key, teamIndex);
+            this.teamSprite.setScale(scale);
+            this.teamSprite.setOrigin(...origin);
             this.scene.spawnExplosionEffect({
                 color: hueToColor(this.hue, 0.5, 0.5),
                 distance: 32,
@@ -274,7 +288,7 @@ export class Node extends Phaser.GameObjects.Container {
             : 0xcccccc;
 
         this.tint = color;
-        this.bodySprite.setTint(this.tint);
+        this.teamSprite.setTint(this.tint);
 
         const baseTint = player
             ? hueToColor(player.hue, 0.3, 0.7)

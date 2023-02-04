@@ -20,31 +20,41 @@ export type INodeState = {
     maxHp: 100;
 };
 
-export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origin: [number, number] } } = {
+export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origin: [number, number], baseIndex: number, teamIndex: number } } = {
     'root': {
         key: 'structure_house',
+        baseIndex: 0,
+        teamIndex: 0,
         scale: 0.6,
         origin: [0.5, 0.7],
     },
     'bud': {
-        key: 'pawn',
+        key: 'mushrooms',
+        baseIndex: 0,
+        teamIndex: 4,
         scale: 0.5,
-        origin: [0.5, 0.8],
+        origin: [0.5, 0.6],
     },
     'converter': {
-        key: 'chess_pawn',
-        scale: 0.5,
+        key: 'mushrooms',
+        baseIndex: 3,
+        teamIndex: 7,
+        scale: 1,
         origin: [0.5, 0.9],
     },
     'shooter': {
-        key: 'chess_knight',
-        scale: 0.8,
-        origin: [0.5, 0.9],
+        key: 'mushrooms',
+        baseIndex: 1,
+        teamIndex: 5,
+        scale: 1,
+        origin: [0.5, 0.95],
     },
     'swarm': {
-        key: 'chess_rook',
-        scale: 0.8,
-        origin: [0.5, 0.9],
+        key: 'mushrooms',
+        baseIndex: 2,
+        teamIndex: 6,
+        scale: 1,
+        origin: [0.6, 0.95],
     },
 };
 

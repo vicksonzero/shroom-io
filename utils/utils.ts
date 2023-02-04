@@ -49,3 +49,7 @@ export function randomInUnitDisc() {
 export function threeDp(val: number) {
     return Math.floor(val * 1000) / 1000;
 }
+
+export function hueToColor(hue: number) {
+
+}

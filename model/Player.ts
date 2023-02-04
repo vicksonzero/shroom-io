@@ -10,7 +10,7 @@ export type IPlayerState = {
     r: number; // physics radius
 
     name: string;
-    color?: number;
+    hue: number;
     isHuman?: boolean;
     isCtrl?: boolean; // for the player receiving this state pack, is this Player themselves?
     nextMoveTick?: number;
@@ -18,6 +18,9 @@ export type IPlayerState = {
 
     mAmt: number;
     aAmt: number;
+    
+    hp: number;
+    maxHp: number;
 
     nodes: INodeState[],
 }

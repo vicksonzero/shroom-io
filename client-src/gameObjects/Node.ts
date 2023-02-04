@@ -7,6 +7,8 @@ import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
 import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
+import { Player } from './Player';
+import { HpBar } from './HpBar';
 
 
 const log = Debug('shroom-io:Node:log');
@@ -19,12 +21,14 @@ type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
 
+const HSVToRGB = Phaser.Display.Color.HSVToRGB;
+
 export class Node extends Phaser.GameObjects.Container {
     // entity
     scene: MainScene;
     uniqueID: number;
     entityId: number;
-    playerId: number;
+    playerEntityId: number;
     parentNodeId: number;
     birthday: number; // TODO: need to use birthday better
 
@@ -41,6 +45,7 @@ export class Node extends Phaser.GameObjects.Container {
     diceCountLabel: Text;
     bodySprite: Image;
     baseGraphics: Graphics;
+    hpBar: HpBar;
 
     fixtureDef?: b2FixtureDef;
     bodyDef?: b2BodyDef;
@@ -79,6 +84,7 @@ export class Node extends Phaser.GameObjects.Container {
                 text: '',
                 style: { align: 'center', color: '#000000' },
             }),
+            this.hpBar = new HpBar(this.scene),
             // this.debugText = this.scene.make.text({
             //     x: 32, y: -32,
             //     text: '',
@@ -97,23 +103,24 @@ export class Node extends Phaser.GameObjects.Container {
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
-        this.playerId = playerEntityId;
+        this.playerEntityId = playerEntityId;
         this.parentNodeId = parentNodeId;
         this.birthday = birthday;
         this.setPosition(x, y);
         this.r = r;
+        this.hpBar.init(this.hp, this.maxHp);
 
         const isControlling = false;
-        const color = 0; // TODO: playerId;
-        if (color) {
-            this.tint = color;
+        const player = this.scene.entityList[this.playerEntityId] as Player;
+        if (player) {
+            this.tint = (HSVToRGB(player.hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
             this.bodySprite.setTint(this.tint);
 
-
+            const baseTint = (HSVToRGB(player.hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            this.baseGraphics.clear();
+            this.baseGraphics.fillStyle(baseTint, 0.8);
+            this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
         }
-        this.baseGraphics.clear();
-        this.baseGraphics.fillStyle(0xaaaaaa, 0.8);
-        this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * 0.7);
 
         this.setName(`Node ${this.entityId} (of ${playerEntityId}) ${isControlling ? '(Me)' : ''}`);
 
@@ -187,12 +194,13 @@ export class Node extends Phaser.GameObjects.Container {
 
 
         this.entityId = entityId;
-        this.playerId = playerEntityId;
+        this.playerEntityId = playerEntityId;
         this.parentNodeId = parEid;
 
         this.nodeType = nodeType;
         this.hp = hp;
         this.maxHp = maxHp;
+        this.hpBar.init(this.hp, this.maxHp);
 
         if (!isSmooth) {
             this.x = x;
@@ -211,6 +219,8 @@ export class Node extends Phaser.GameObjects.Container {
             this.bodySprite.setScale(scale);
             this.bodySprite.setOrigin(...origin);
         }
+
+        this.nameTag.setText(this._debugShowEntityId ? `(${this.entityId})` : '');
         // this.nameTag.setText(this.name);
 
         // console.log(diceColors);

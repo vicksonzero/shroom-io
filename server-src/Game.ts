@@ -11,7 +11,7 @@ import { Player } from './Player';
 import { Node } from './Node';
 import { Resource } from './Resource';
 import { PHYSICS_FRAME_SIZE, PHYSICS_MAX_FRAME_CATCHUP, SPAWN_PADDING, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
-import { EVT_PLAYER_DISCONNECTED, StateMessage } from '../model/EventsFromServer';
+import { ToggleShootingMessage, EVT_TOGGLE_SHOOTING, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, NodeKilledMessage, StateMessage } from '../model/EventsFromServer';
 import { PhysicsSystem } from './PhysicsSystem';
 import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
@@ -20,8 +20,16 @@ import { IPlayerState } from '../model/Player';
 import { INodeState, NodeType } from '../model/Node';
 import { IResourceState } from '../model/Resource';
 import { IPacketState } from '../model/Packet';
+import { IBulletState } from '../model/Bullet';
 import { getUniqueID } from '../model/UniqueID';
 import { threeDp } from '../utils/utils';
+import {
+    BULLET_FLY_TIME,
+    MINING_DISTANCE,
+    MINING_INTERVAL,
+    MINING_TIME,
+    SHOOTING_DISTANCE,
+} from '../model/constants'
 
 
 const verbose = Debug('shroom-io:Game:verbose');
@@ -36,6 +44,7 @@ export class Game {
     public nodes: Node[] = [];
     public resources: Resource[] = [];
     public packets: IPacketState[] = [];
+    public bullets: IBulletState[] = [];
     sfx_point: any;
 
     frameSize = PHYSICS_FRAME_SIZE; // ms
@@ -179,13 +188,16 @@ export class Game {
                     r: player.r, // radius
 
                     name: player.name,
-                    color: player.color,
+                    hue: player.hue,
                     isHuman: player.isHuman,
                     isCtrl: (player.socketId === playerId), // for the player receiving this state pack, is this Player themselves?
                     nextMoveTick: player.nextMoveTick,
                     nextCanShoot: player.nextCanShoot,
                     mAmt: player.mineralAmount,
                     aAmt: player.ammoAmount,
+
+                    hp: player.hp,
+                    maxHp: player.maxHp,
 
                     nodes: this.getNodesByPlayerId(player.entityId).map(n => n.toStateObject()),
                 } as IPlayerState;
@@ -208,8 +220,20 @@ export class Game {
 
     onPlayerCreateNode(clientId: string, x: number, y: number, playerEntityId: number, parentNodeId: number) {
         const player = this.getPlayerById(clientId);
-        // TODO: do some checkings; reject some commands like too far or no money;
-        // TODO: send some return message if not possible
+        if (!player) return;
+
+        const parentNode = [...this.players, ...this.nodes].find(n => n.entityId == parentNodeId);
+        if (!parentNode) return;
+
+        // TODO: collision checks
+
+        // TODO: distance checks
+
+        // TODO: money checks
+
+
+        // TODO: perhaps send some return message if not possible
+
         log('onPlayerCreateNode', x, y);
         this.spawnNode(x, y, playerEntityId, parentNodeId);
     }
@@ -284,9 +308,11 @@ export class Game {
             // (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         this.distanceMatrix.init();
+        this.updateBullets();
         this.updatePackets();
         this.updateNodes();
         this.updatePlayers();
+        this.cleanUpDeadEntities();
 
         this.fixedTime.update(fixedTime, frameSize);
         // this.lateUpdate(fixedTime, frameSize);
@@ -355,23 +381,55 @@ export class Game {
             const player = this.players.find(p => p.entityId === node.playerEntityId);
             if (!player) continue;
 
-            node.nextCanShoot = Date.now() + 5000;
+            node.nextCanShoot = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
 
-            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
+            this.updateNodeMining(node, player);
+            this.updateNodeAttack(node, player);
+        }
+    }
 
-            materialsLog(`updateNodes(node-${node.entityId}, player=${player.name}) closestEntities[${closestEntities.length}]`);
+    updateNodeMining(node: Node, player: Player) {
+        const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, MINING_DISTANCE);
 
-            const resourceResult = closestEntities
-                .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
-                .find(([e, dist]) => e instanceof Resource);
-            if (!resourceResult) continue;
+        // materialsLog(`updateNodeMining(node-${node.entityId}, player=${player.name}) closestEntities[${closestEntities.length}]`);
 
-            const [resource, dist] = resourceResult as [Resource, number];
-            materialsLog(`resourceResult r-${resource.entityId} dist=${dist}`);
-            if (dist > 100) continue;
+        const resourceResult = closestEntities
+            .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
+            .find(([e, dist]) => e instanceof Resource);
+        if (!resourceResult) return;
 
-            this.transferMaterials(resource, node, 10, 0, this.fixedElapsedTime, 2000);
+        const [resource, dist] = resourceResult as [Resource, number];
+        // materialsLog(`resourceResult r-${resource.entityId} dist=${dist}`);
+        if (dist > MINING_DISTANCE) return;
 
+        materialsLog(`r-${resource.entityId} give mineral to (${node.entityId})`);
+        this.transferMaterials(resource, node, 10, 0, this.fixedElapsedTime, MINING_TIME);
+    }
+
+
+    updateNodeAttack(node: Node, player: Player) {
+        if (node.targetId < 0) {
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, SHOOTING_DISTANCE);
+            const nodeResult = closestEntities
+                .map(([entityId, dist]) => [
+                    [...this.nodes, ...this.players].find(n => n.entityId === entityId),
+                    dist
+                ])
+                .find(([e, dist]) => (
+                    e instanceof Node && e.playerEntityId != player.entityId ||
+                    e instanceof Player && e.entityId != player.entityId));
+            if (!nodeResult) return;
+
+            const [resource, dist] = nodeResult as [Node | Player, number];
+
+            node.targetId = resource.entityId;
+        }
+        const targetNodeOrPlayer = [...this.nodes, ...this.players].find(n => n.entityId === node.targetId);
+        if (!targetNodeOrPlayer) return;
+
+        if (targetNodeOrPlayer.hp > 0) {
+            // shoot!
+            this.shootNode(node, targetNodeOrPlayer);
         }
     }
 
@@ -443,6 +501,124 @@ export class Game {
             timeLength,
         });
         return true;
+    }
+
+    shootNode(fromNode: Node, toNodeOrPlayer: Node | Player) {
+        log(`(${fromNode.entityId}) shoot at (${toNodeOrPlayer.entityId})`);
+
+        const bullet = {
+            fromEntityId: fromNode.entityId,
+            toEntityId: toNodeOrPlayer.entityId,
+
+            attDmg: 10,
+
+            fromFixedTime: this.fixedElapsedTime,
+            timeLength: BULLET_FLY_TIME,
+        };
+        this.bullets.push(bullet);
+
+        this.emitToAll(EVT_TOGGLE_SHOOTING, {
+            tick: this.fixedElapsedTime,
+            bullet,
+        } as ToggleShootingMessage);
+    }
+
+    updateBullets() {
+        this.bullets.sort((a, b) => a.fromFixedTime + a.timeLength - b.fromFixedTime - b.timeLength);
+
+        const bulletReceivers = [
+            ...this.players,
+            ...this.nodes,
+        ];
+
+        for (const bullet of this.bullets) {
+            const {
+                fromEntityId,
+                toEntityId,
+
+                attDmg,
+
+                fromFixedTime,
+                timeLength,
+            } = bullet;
+
+            if (fromFixedTime + timeLength > this.fixedElapsedTime) break;
+
+            let toEntity = bulletReceivers.find(e => e.entityId === toEntityId);
+            if (toEntity == null) continue;
+
+            toEntity.hp -= attDmg;
+        }
+
+        this.bullets = this.bullets.filter(b => (b.fromFixedTime + b.timeLength > this.fixedElapsedTime));
+    }
+
+    cleanUpDeadEntities() {
+        // console.log('cleanUpDeadEntities');
+
+        const killedEntities: number[] = [];
+        for (const entity of [...this.players, ...this.nodes]) {
+            if (entity.hp > 0) continue;
+            log(`entity bye bye (hp= ${entity.hp}`);
+
+            // kill entity
+            this.killEntity(entity, killedEntities);
+        }
+        for (const resource of this.resources) {
+            if (!(resource.mineralAmount <= 0 && resource.ammoAmount <= 0)) continue;
+
+            // kill entity
+            this.killEntity(resource, killedEntities);
+        }
+    }
+
+    killEntity(entity: Node | Player | Resource, killedEntities: number[]) {
+        log('killEntity ', entity.name);
+        if (entity instanceof Node) {
+            // clear connections
+
+            this.traverseNodes(entity, 0, (entity, layer) => {
+                if (entity instanceof Node) {
+                    entity.playerEntityId = -1;
+                    // don't kill these nodes yet, coz nodes without a root can still shoot for a while
+                }
+            });
+
+            killedEntities.push(entity.entityId);
+            this.nodes.splice(this.nodes.indexOf(entity), 1);
+        }
+        if (entity instanceof Player) {
+            // clear connections
+
+            killedEntities.push(entity.entityId);
+            this.players.splice(this.players.indexOf(entity), 1);
+        }
+        if (entity instanceof Resource) {
+            // clear connections
+
+
+            killedEntities.push(entity.entityId);
+            this.resources.splice(this.resources.indexOf(entity), 1);
+        }
+
+        if (killedEntities.length > 0) {
+            this.emitToAll(EVT_NODE_KILLED, {
+                tick: this.fixedElapsedTime,
+                entityList: killedEntities,
+            } as NodeKilledMessage);
+        }
+    }
+
+    traverseNodes(entity: Node | Player, layer: number, callback: (entity: Node | Player, layer: number) => void) {
+        if (!entity) return;
+        callback(entity, layer);
+
+        let childrenNodes = this.nodes.filter(n => n.parentNodeId == entity.entityId);
+        if (!childrenNodes) return;
+
+        for (const child of childrenNodes) {
+            this.traverseNodes(child, layer + 1, callback);
+        }
     }
 
     setUpPhysics() {

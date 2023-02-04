@@ -1,4 +1,5 @@
 import { XY } from "@flyover/box2d";
+import { IBulletState } from "./Bullet";
 import { IPacketState } from "./Packet";
 import { IPlayerState } from "./Player";
 import { IResourceState } from "./Resource";
@@ -27,6 +28,19 @@ export type DebugInspectReturn = {
     msg: string;
     data?: any;
 }
+
+export const EVT_TOGGLE_SHOOTING = 'EVT_TOGGLE_SHOOTING';
+export type ToggleShootingMessage = {
+    tick: number;
+    entityId: number;
+    bullet: IBulletState;
+};
+
+export const EVT_NODE_KILLED = 'EVT_NODE_KILLED';
+export type NodeKilledMessage = {
+    tick: number;
+    entityList: number[];
+};
 
 export const EVT_PONG = 'EVT_PONG';
 export type PongMessage = {

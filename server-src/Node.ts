@@ -30,13 +30,13 @@ export class Node {
     public color = 0xffffff;
     public isHuman = false;
     public isControlling = false;
-    public playerEntityId: number;
+    public playerEntityId: number; // -1 means no owners
     public parentNodeId: number;
     public birthday: number;
 
     public nodeType: NodeType;
-    public hp: 100;
-    public maxHp: 100;
+    public hp= 100;
+    public maxHp= 100;
 
     // physics
     public x = 0;
@@ -62,13 +62,14 @@ export class Node {
     constructor() {
         this.entityId = getUniqueID();
     }
-    static create(playerId: number, parentNodeId: number, birthday: number, nodeType: NodeType = 'bud') {
+    static create(playerEntityId: number, parentNodeId: number, birthday: number, nodeType: NodeType = 'bud') {
         const result = new Node();
-        result.name = `Node of ${playerId}`;
+        result.name = `Node of ${playerEntityId}`;
 
-        result.playerEntityId = playerId;
+        result.playerEntityId = playerEntityId;
         result.parentNodeId = parentNodeId;
         result.birthday = birthday;
+        result.targetId = -1;
 
         result.nodeType = nodeType;
         result.hp = 100;

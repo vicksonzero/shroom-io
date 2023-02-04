@@ -4,6 +4,7 @@ import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2FixtureDef, b2Vec2, b2W
 import { PIXEL_TO_METER } from "./constants.js";
 import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import * as Debug from 'debug';
+import { NodeType } from '../model/Node';
 
 const verbose = Debug('shroom-io:Player:verbose');
 const log = Debug('shroom-io:Player:log');
@@ -24,12 +25,17 @@ export class Player {
 
 
     public name = 'Player';
-    public color = 0xffffff;
+    public hue = 0;
     public isHuman = false;
     public isControlling = false;
 
     public mineralAmount: number = 10;
     public ammoAmount: number = 0;
+
+
+    public nodeType: NodeType;
+    public hp = 100;
+    public maxHp = 100;
 
     // physics
     public x = 0;
@@ -55,6 +61,9 @@ export class Player {
     static create(name: string, tier = 0, socketId?: string) {
         const result = new Player();
         result.name = name;
+        result.hue = Math.floor(Math.random() * 360);
+        result.hp = 1000;
+        result.maxHp = 1000;
 
         if (socketId) {
             result.socketId = socketId;

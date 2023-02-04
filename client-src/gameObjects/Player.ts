@@ -9,6 +9,7 @@ import { IPlayerState } from '../../model/Player';
 import { getPhysicsDefinitions } from '../../model/Player';
 import { lerpRadians } from '../../utils/utils';
 import { nodeSprites, NodeType } from '../../model/Node';
+import { HpBar } from './HpBar';
 
 
 const log = Debug('shroom-io:Player:log');
@@ -21,6 +22,8 @@ type GameObject = Phaser.GameObjects.GameObject;
 type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
+
+const HSVToRGB = Phaser.Display.Color.HSVToRGB;
 
 // phaser input
 type EventControl = Phaser.Types.Input.EventData;
@@ -42,6 +45,9 @@ export class Player extends Phaser.GameObjects.Container {
     ammoAmount = 0;
 
     nodeType: NodeType = 'root';
+    hue: number;
+    hp = 100;
+    maxHp = 100;
 
     // sprites
     debugText?: Text;
@@ -50,6 +56,8 @@ export class Player extends Phaser.GameObjects.Container {
     diceCountLabel: Text;
     bodySprite: Image;
     edgeGraphics: Graphics;
+    baseGraphics: Graphics;
+    hpBar: HpBar;
 
     fixtureDef?: b2FixtureDef;
     bodyDef?: b2BodyDef;
@@ -70,9 +78,12 @@ export class Player extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
-        const { key, scale, origin } = nodeSprites[this.nodeType];
+        const { key, scale, origin } = nodeSprites['bud'];
 
         this.add([
+            this.baseGraphics = this.scene.make.graphics({
+                x: 0, y: 0
+            }, false),
             this.edgeGraphics = this.scene.make.graphics({
                 x: 0, y: 0
             }, false),
@@ -85,6 +96,7 @@ export class Player extends Phaser.GameObjects.Container {
                 text: '',
                 style: { align: 'center', color: '#000000' },
             }),
+            this.hpBar = new HpBar(this.scene),
             // this.debugText = this.scene.make.text({
             //     x: 32, y: -32,
             //     text: '',
@@ -100,16 +112,19 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     init(state: IPlayerState): this {
-        const { eid: entityId, x, y, r, name, color, nextCanShoot, isHuman, isCtrl: isControlling } = state;
+        const { eid: entityId, x, y, r, name, hue, nextCanShoot, isHuman, isCtrl: isControlling } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
         this.setPosition(x, y);
         this.r = r;
-        if (color) {
-            this.tint = color;
+        this.hue = hue;
+        this.hpBar.init(this.hp, this.maxHp);
+        if (hue) {
+            console.log('hue', hue);
+            this.tint = (HSVToRGB(hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
             this.bodySprite.setTint(this.tint);
-            this.edgeGraphics.lineStyle(1, color);
+            this.edgeGraphics.lineStyle(1, this.tint);
         }
 
         this.isControlling = (isControlling == null ? this.isControlling : isControlling);
@@ -177,16 +192,21 @@ export class Player extends Phaser.GameObjects.Container {
         const {
             x, y,
             r,
-            name, color,
+            name, hue,
             isHuman, isCtrl,
             nextCanShoot,
             mAmt: mineralAmount,
             aAmt: ammoAmount,
+            hp, maxHp,
         } = state;
 
 
         this.mineralAmount = mineralAmount;
         this.ammoAmount = ammoAmount;
+        this.hue = hue;
+        this.hp = hp;
+        this.maxHp = maxHp;
+        this.hpBar.init(this.hp, this.maxHp);
 
         this.syncData = {
             dt,
@@ -204,13 +224,26 @@ export class Player extends Phaser.GameObjects.Container {
             ); // TODO: lerp instead of set
         }
 
-        if (color) {
-            this.tint = color;
+        if (hue) {
+            this.tint = (HSVToRGB(hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
             this.bodySprite.setTint(this.tint);
+            this.edgeGraphics.lineStyle(1, this.tint);
+            const baseTint = (HSVToRGB(hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            this.baseGraphics.clear();
+            this.baseGraphics.fillStyle(baseTint, 0.8);
+            this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
         }
 
         this.isControlling = (isCtrl == null ? this.isControlling : isCtrl);
         this.setName(name);
+
+        if (this.isControlling) {
+            const { key, scale, origin } = nodeSprites['root'];
+            this.bodySprite
+                .setTexture(key)
+                .setScale(scale)
+                .setOrigin(...origin)
+        }
 
         const materialStr = `${this.mineralAmount}/${this.ammoAmount}`;
         const entityIdStr = this._debugShowEntityId ? ` (${this.entityId})` : ``;

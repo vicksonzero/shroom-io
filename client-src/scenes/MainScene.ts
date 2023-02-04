@@ -16,9 +16,14 @@ import {
     WORLD_WIDTH, WORLD_HEIGHT,
     CAMERA_WIDTH, CAMERA_HEIGHT,
     WS_URL,
+} from '../constants';
+import {
     BUILD_RADIUS_MAX,
     BUILD_RADIUS_MIN,
-} from '../constants';
+    MINING_DISTANCE,
+    MINING_INTERVAL,
+    MINING_TIME,
+} from '../../model/constants'
 // import { Immutable } from '../utils/ImmutableType';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
@@ -26,7 +31,7 @@ import { DistanceMatrix } from '../../utils/DistanceMatrix';
 import { capitalize, lerpRadians, threeDp } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
-import { DebugInspectReturn, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, PongMessage, StateMessage } from '../../model/EventsFromServer';
+import { ToggleShootingMessage, DebugInspectReturn, EVT_TOGGLE_SHOOTING, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, NodeKilledMessage, PongMessage, StateMessage } from '../../model/EventsFromServer';
 import { CMD_CHEAT, CMD_CREATE_NODE, CMD_MORPH_NODE, CMD_PING, CMD_START, CreateNodeMessage, MorphNodeMessage, StartMessage } from '../../model/EventsFromClient';
 import { IPlayerState } from '../../model/Player';
 import { INodeState, nodeSprites } from '../../model/Node';
@@ -208,6 +213,16 @@ export class MainScene extends Phaser.Scene {
             const entityIdList = stateMessage.playerStates.map(p => p.eid).join(', ');
             socketLog(`Socket state (${stateMessage.playerStates.length}) [${entityIdList}]`);
             this.handlePlayerStateList(stateMessage);
+        });
+        this.socket.on(EVT_TOGGLE_SHOOTING, (bulletShotMessage: ToggleShootingMessage) => {
+            const bullet = bulletShotMessage.bullet;
+            socketLog(`Socket EVT_BULLET_SHOT (${JSON.stringify(bullet)})`);
+        });
+        this.socket.on(EVT_NODE_KILLED, (nodeKilledMessage: NodeKilledMessage) => {
+            const entityList = nodeKilledMessage.entityList;
+
+            this.onNodeKilled(entityList);
+            socketLog(`Socket EVT_NODE_KILLED (${JSON.stringify(entityList)})`);
         });
         this.socket.on(EVT_PLAYER_DISCONNECTED, (data) => {
             const { playerId } = data;
@@ -663,7 +678,7 @@ export class MainScene extends Phaser.Scene {
     }
     createBuildUi() {
         const buildUiRect = this.add.graphics();
-        buildUiRect.fillStyle(0x000000, 0.6);
+        buildUiRect.fillStyle(0x000000, 0.7);
         buildUiRect.fillRect(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 
         this.buildUi = this.make.container({ x: 0, y: 0 }).add([
@@ -886,13 +901,13 @@ export class MainScene extends Phaser.Scene {
             const node = entity as Node;
             // if it is time for node to spawn effect,
             if (node.nextCanShoot > Date.now()) continue;
-            node.nextCanShoot = Date.now() + 5000;
+            node.nextCanShoot = Date.now() + MINING_INTERVAL;
 
-            const player = this.entityList[node.playerId];
+            const player = this.entityList[node.playerEntityId];
             if (!player) continue;
 
 
-            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, MINING_DISTANCE);
 
             const resourceResult = closestEntities
                 .map(([entityId, dist]) => [this.entityList[entityId], dist])
@@ -902,7 +917,7 @@ export class MainScene extends Phaser.Scene {
 
             const [resource, dist] = resourceResult as [Resource, number];
             log(`resourceResult r-${resource.entityId} dist=${dist}`);
-            if (dist > 100) continue;
+            if (dist > MINING_DISTANCE) continue;
 
             // spawn effect
             this.spawnPacketEffect({
@@ -914,7 +929,7 @@ export class MainScene extends Phaser.Scene {
                 ammoAmount: 0,
 
                 fromFixedTime: -1,
-                timeLength: 3000,
+                timeLength: MINING_TIME,
             }, resource, node);
         }
 
@@ -984,7 +999,7 @@ export class MainScene extends Phaser.Scene {
         })
             .on(POINTER_DOWN, (pointer: Pointer, localX: number, localY: number, eventCtrl: EventControl) => {
                 console.log('node pointerdown');
-                this.spawnNodeBuilder(pointer.x, pointer.y, node.r, node.playerId, node.entityId);
+                this.spawnNodeBuilder(pointer.x, pointer.y, node.r, node.playerEntityId, node.entityId);
                 eventCtrl.stopPropagation();
             })
             ;
@@ -1153,6 +1168,38 @@ export class MainScene extends Phaser.Scene {
         }
 
         this.lastUpdateTick = tick;
+    }
+
+    onNodeKilled(entityList: number[]) {
+        const deadEntities = Object.values(this.entityList)
+            .filter(e => entityList.includes(e.entityId));
+
+        for (const entity of deadEntities) {
+
+            if (entity instanceof Node || entity instanceof Player) {
+                this.traverseNodes(entity, 0, (entity, layer) => {
+                    if (entity instanceof Node) {
+                        entity.playerEntityId = -1;
+                        entity.destroy();
+                    }
+                });
+                delete this.entityList[entity.entityId];
+            }
+        }
+    }
+
+    traverseNodes(entity: Node | Player, layer: number, callback: (entity: Node | Player, layer: number) => void) {
+        if (!entity) return;
+        callback(entity, layer);
+
+        let childrenNodes: Node[] = Object.values(this.entityList)
+            .filter((n): n is Node => n instanceof Node)
+            .filter(n => n.parentNodeId == entity.entityId);
+        if (!childrenNodes) return;
+
+        for (const child of childrenNodes) {
+            this.traverseNodes(child, layer + 1, callback);
+        }
     }
 
 

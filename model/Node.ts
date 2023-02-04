@@ -33,7 +33,7 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
     },
     'converter': {
         key: 'chess_pawn',
-        scale: 0.7,
+        scale: 0.5,
         origin: [0.5, 0.9],
     },
     'shooter': {

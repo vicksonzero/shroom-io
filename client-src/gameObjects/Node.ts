@@ -56,11 +56,12 @@ export class Node extends Phaser.GameObjects.Container {
     maxHp: 100;
 
     // debug
-    _debugShowEntityId = false;
+    _debugShowEntityId = true;
 
     syncData = {
         x: 0, y: 0,
         nodeType: '' as NodeType,
+        playerEntityId: -1,
     };
 
     constructor(scene: MainScene) {
@@ -94,12 +95,14 @@ export class Node extends Phaser.GameObjects.Container {
         this.bodySprite.setTint(this.tint);
         this.bodySprite.setScale(scale);
         this.bodySprite.setOrigin(...origin);
+        this.hpBar.setPosition(0, 16);
 
         this.nameTag.setOrigin(0.5, 1);
     }
 
     init(state: INodeState): this {
-        const { eid: entityId, x, y, r, parEid: parentNodeId, plEid: playerEntityId, birthday } = state;
+        const { eid: entityId, x, y, r, parEid: parentNodeId, plEid: playerEntityId,
+            hp, maxHp, nodeType, birthday } = state;
         this.entityId = entityId;
         // console.log(`init ${name} (${x}, ${y})`);
 
@@ -108,6 +111,10 @@ export class Node extends Phaser.GameObjects.Container {
         this.birthday = birthday;
         this.setPosition(x, y);
         this.r = r;
+        this.hpBar.init(this.hp, this.maxHp);
+        this.nodeType = nodeType;
+        this.hp = hp;
+        this.maxHp = maxHp;
         this.hpBar.init(this.hp, this.maxHp);
 
         const isControlling = false;
@@ -121,6 +128,12 @@ export class Node extends Phaser.GameObjects.Container {
             this.baseGraphics.fillStyle(baseTint, 0.8);
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
         }
+
+        const { key, scale, origin } = nodeSprites[nodeType];
+        this.bodySprite.setTexture(key);
+        this.bodySprite.setScale(scale);
+        this.bodySprite.setOrigin(...origin);
+        this.syncData.nodeType = nodeType;
 
         this.setName(`Node ${this.entityId} (of ${playerEntityId}) ${isControlling ? '(Me)' : ''}`);
 
@@ -186,7 +199,7 @@ export class Node extends Phaser.GameObjects.Container {
             x, y,
             eid: entityId,
             plEid: playerEntityId,
-            parEid,
+            parEid: parentNodeId,
             nodeType,
             hp,
             maxHp,
@@ -195,7 +208,7 @@ export class Node extends Phaser.GameObjects.Container {
 
         this.entityId = entityId;
         this.playerEntityId = playerEntityId;
-        this.parentNodeId = parEid;
+        this.parentNodeId = parentNodeId;
 
         this.nodeType = nodeType;
         this.hp = hp;
@@ -220,6 +233,12 @@ export class Node extends Phaser.GameObjects.Container {
             this.bodySprite.setOrigin(...origin);
         }
 
+        if (playerEntityId != this.syncData.playerEntityId) {
+            this.updateBaseGraphics();
+        }
+
+
+
         this.nameTag.setText(this._debugShowEntityId ? `(${this.entityId})` : '');
         // this.nameTag.setText(this.name);
 
@@ -229,6 +248,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.syncData = {
             x, y,
             nodeType,
+            playerEntityId,
         };
 
 
@@ -236,5 +256,23 @@ export class Node extends Phaser.GameObjects.Container {
         //     ? `(${x.toFixed(1)}, ${y.toFixed(1)})`
         //     : ''
         // );
+    }
+
+    updateBaseGraphics() {
+
+        const player = this.scene.entityList[this.playerEntityId] as Player;
+        const color = player
+            ? (HSVToRGB(player.hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color
+            : 0xbbbbbb;
+
+        this.tint = color;
+        this.bodySprite.setTint(this.tint);
+
+        const baseTint = player
+            ? (HSVToRGB(player.hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color
+            : 0x999999;
+        this.baseGraphics.clear();
+        this.baseGraphics.fillStyle(baseTint, 0.8);
+        this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
     }
 }

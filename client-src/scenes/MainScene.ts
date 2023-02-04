@@ -783,7 +783,7 @@ export class MainScene extends Phaser.Scene {
                 .setScale(0.6)
                 .setTint(0xaaffff)
                 .setInteractive({
-                    hitArea: new Phaser.Geom.Circle(20, 20, 40),
+                    hitArea: new Phaser.Geom.Circle(25, 25, 50),
                     hitAreaCallback: Phaser.Geom.Circle.Contains,
                     draggable: false,
                     dropZone: false,
@@ -1015,6 +1015,9 @@ export class MainScene extends Phaser.Scene {
     }
 
     spawnNodeBuilder(x: number, y: number, r: number, playerId: number, parentNodeId: number) {
+        if(this.nodeBuilder){
+            this.nodeBuilder.destroy();
+        }
         this.nodeBuilder = new NodeBuilder(this);
 
         console.log(`spawnNodeBuilder x: ${x}, y: ${y}, r: ${r}, playerId: ${playerId}, parentNodeId: ${parentNodeId})`);
@@ -1180,9 +1183,13 @@ export class MainScene extends Phaser.Scene {
                 this.traverseNodes(entity, 0, (entity, layer) => {
                     if (entity instanceof Node) {
                         entity.playerEntityId = -1;
-                        entity.destroy();
+                        entity.updateBaseGraphics();
                     }
                 });
+                entity.destroy();
+                delete this.entityList[entity.entityId];
+            }
+            if (entity instanceof Resource) {
                 delete this.entityList[entity.entityId];
             }
         }

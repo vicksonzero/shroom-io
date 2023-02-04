@@ -408,6 +408,7 @@ export class Game {
 
 
     updateNodeAttack(node: Node, player: Player) {
+        if (node.nodeType !== 'shooter' && node.nodeType !== 'swarm') return;
         if (node.targetId < 0) {
             const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, SHOOTING_DISTANCE);
             const nodeResult = closestEntities
@@ -514,6 +515,7 @@ export class Game {
 
             fromFixedTime: this.fixedElapsedTime,
             timeLength: BULLET_FLY_TIME,
+            interval: BULLET_FLY_TIME, // TODO: should be attack interval config
         };
         this.bullets.push(bullet);
 

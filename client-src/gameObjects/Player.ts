@@ -119,6 +119,7 @@ export class Player extends Phaser.GameObjects.Container {
         this.setPosition(x, y);
         this.r = r;
         this.hue = hue;
+        this.hpBar.setPosition(0, 16);
         this.hpBar.init(this.hp, this.maxHp);
         if (hue) {
             console.log('hue', hue);

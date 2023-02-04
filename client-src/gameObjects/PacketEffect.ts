@@ -1,4 +1,4 @@
-import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
+import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World, XY } from '@flyover/box2d';
 import * as Debug from 'debug';
 import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
@@ -46,6 +46,9 @@ export class PacketEffect extends Phaser.GameObjects.Container {
     diceCountLabel: Text;
     bodySprites: Image[];
     baseGraphics: Graphics;
+
+    fromPos: XY;
+    toPos: XY; // is always zero
 
     // debug
     _debugShowEntityId = false;
@@ -111,16 +114,29 @@ export class PacketEffect extends Phaser.GameObjects.Container {
             toEntity.y + random.y * 8 - 8,
         );
 
+        this.fromPos = {
+            x: fromEntity.x - toEntity.x,
+            y: fromEntity.y - toEntity.y,
+        };
 
-        this.baseGraphics.clear();
-        this.baseGraphics.lineStyle(5, 0xc728a7);
+        const tween = this.scene.tweens.addCounter({
+            from: 5,
+            to: 0,
+            duration: timeLength,
+            paused: false,
+        }).on(Phaser.Tweens.Events.TWEEN_UPDATE, () => {
 
-        const xx = fromEntity.x - toEntity.x;
-        const yy = fromEntity.y - toEntity.y;
-        this.baseGraphics.lineBetween(
-            0, 0,
-            xx, yy
-        );
+
+            this.baseGraphics.clear();
+            this.baseGraphics.lineStyle(tween.getValue(), 0xc728a7);
+
+            this.baseGraphics.lineBetween(
+                0, 0,
+                this.fromPos.x, this.fromPos.y
+            );
+        }).on(Phaser.Tweens.Events.TWEEN_COMPLETE, () => {
+            this.destroy();
+        });
 
         this.setName(`Resource (${mineralAmount})`);
 
@@ -129,27 +145,8 @@ export class PacketEffect extends Phaser.GameObjects.Container {
 
     fixedUpdate(time: number, dt: number) {
 
-        const fromEntity = this.scene.entityList[this.fromEntityId];
-        const toEntity = this.scene.entityList[this.toEntityId];
 
-        const lineThickness = 5 * (this.toFixedTime - this.scene.fixedElapsedTime) / (this.toFixedTime - this.fromFixedTime);
-        this.baseGraphics.clear();
-        if (lineThickness < 0) {
-            this.setVisible(false);
-            return;
-        }
-        this.baseGraphics.lineStyle(lineThickness, 0xc728a7, 0.5);
-
-        const xx = fromEntity.x - this.x;
-        const yy = fromEntity.y - this.y;
-        this.baseGraphics.lineBetween(
-            0, 0,
-            xx, yy
-        );
-
-        this.nameTag.setText(``);
-        // this.debugText?.setText(this.isControlling ? `(${x.toFixed(1)}, ${y.toFixed(1)})` : '');
-        // console.log(smoothX, );
+        // this.nameTag.setText(``);
     }
 
     lateUpdate() {

@@ -1190,6 +1190,7 @@ export class MainScene extends Phaser.Scene {
                 delete this.entityList[entity.entityId];
             }
             if (entity instanceof Resource) {
+                entity.destroy();
                 delete this.entityList[entity.entityId];
             }
         }

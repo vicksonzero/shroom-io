@@ -168,6 +168,7 @@ Multiplayer Architecture
 - [ ] make a ranking. the most income wins.
 - [ ] resource nodes can run out, and respawn, to control the maximum colony size.
 - [ ] Towers request Spores, distribution limited by clever network traffic.
+- [ ] Include Git revision number on client and server
 
 # Credits
 

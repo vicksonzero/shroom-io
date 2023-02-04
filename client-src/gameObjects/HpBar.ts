@@ -57,8 +57,8 @@ export class HpBar extends Phaser.GameObjects.Container {
         this.maxValue = maxValue;
 
         this.baseGraphics.clear();
-        this.baseGraphics.lineStyle(1, 0x00aa00);
-        this.baseGraphics.fillStyle(0x00aa00);
+        this.baseGraphics.lineStyle(1, 0x008800);
+        this.baseGraphics.fillStyle(0x008800);
         this.baseGraphics.strokeRect(-w / 2, 0, w, h);
         this.baseGraphics.fillRect(-w / 2, 0, w * percent, h);
 

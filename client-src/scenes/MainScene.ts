@@ -1206,6 +1206,15 @@ export class MainScene extends Phaser.Scene {
             }
             if (entity instanceof Resource) {
                 entity.destroy();
+                this.spawnExplosionEffect({
+                    color: 0xc728a7,
+                    distance: 32,
+                    duration: 700,
+                    particleCount: 8,
+                    size: { min: 5, max: 8 },
+                    x: entity.x,
+                    y: entity.y,
+                });
                 delete this.entityList[entity.entityId];
             }
         }

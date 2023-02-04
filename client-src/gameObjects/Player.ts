@@ -7,7 +7,7 @@ import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
 import { IPlayerState } from '../../model/Player';
 import { getPhysicsDefinitions } from '../../model/Player';
-import { lerpRadians } from '../../utils/utils';
+import { hueToColor, lerpRadians } from '../../utils/utils';
 import { nodeSprites, NodeType } from '../../model/Node';
 import { HpBar } from './HpBar';
 
@@ -22,8 +22,6 @@ type GameObject = Phaser.GameObjects.GameObject;
 type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
-
-const HSVToRGB = Phaser.Display.Color.HSVToRGB;
 
 // phaser input
 type EventControl = Phaser.Types.Input.EventData;
@@ -123,7 +121,7 @@ export class Player extends Phaser.GameObjects.Container {
         this.hpBar.init(this.hp, this.maxHp);
         if (hue) {
             console.log('hue', hue);
-            this.tint = (HSVToRGB(hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            this.tint = hueToColor(hue, 0.5, 0.5);
             this.bodySprite.setTint(this.tint);
             this.edgeGraphics.lineStyle(1, this.tint);
         }
@@ -226,10 +224,11 @@ export class Player extends Phaser.GameObjects.Container {
         }
 
         if (hue) {
-            this.tint = (HSVToRGB(hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            this.tint = hueToColor(hue, 0.5, 0.5);
             this.bodySprite.setTint(this.tint);
             this.edgeGraphics.lineStyle(1, this.tint);
-            const baseTint = (HSVToRGB(hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+
+            const baseTint = hueToColor(hue, 0.3, 0.7);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);

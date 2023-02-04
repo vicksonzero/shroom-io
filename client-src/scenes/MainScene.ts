@@ -28,7 +28,7 @@ import {
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
 // import { GameObjects } from 'phaser';
-import { capitalize, lerpRadians, threeDp } from '../../utils/utils';
+import { capitalize, hueToColor, lerpRadians, threeDp } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import { ToggleShootingMessage, DebugInspectReturn, EVT_TOGGLE_SHOOTING, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, NodeKilledMessage, PongMessage, StateMessage } from '../../model/EventsFromServer';
@@ -44,6 +44,7 @@ import { Node } from '../gameObjects/Node';
 import { Resource } from '../gameObjects/Resource';
 import { PacketEffect } from '../gameObjects/PacketEffect';
 import { PingMeter } from '../gameObjects/PingMeter';
+import { ExplosionEffect, ParticleParams } from '../gameObjects/ExplosionEffect';
 
 
 type BaseSound = Phaser.Sound.BaseSound;
@@ -1015,7 +1016,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     spawnNodeBuilder(x: number, y: number, r: number, playerId: number, parentNodeId: number) {
-        if(this.nodeBuilder){
+        if (this.nodeBuilder) {
             this.nodeBuilder.destroy();
         }
         this.nodeBuilder = new NodeBuilder(this);
@@ -1067,14 +1068,19 @@ export class MainScene extends Phaser.Scene {
 
     spawnPacketEffect(packetState: IPacketState, fromEntity: Container, toEntity: Container) {
         console.log('spawnPacketEffect');
-        const packetEffect = new PacketEffect(this);
+        const eff = new PacketEffect(this);
 
-        this.effectsLayer.add(packetEffect);
-        packetEffect.init(packetState, fromEntity, toEntity);
+        this.effectsLayer.add(eff);
+        eff.init(packetState, fromEntity, toEntity);
 
-        this.effectEntityList.push(packetEffect);
+        this.effectEntityList.push(eff);
 
-        return packetEffect;
+        return eff;
+    }
+
+    spawnExplosionEffect(params: ParticleParams) {
+        const eff = new ExplosionEffect(this, params);
+        this.effectsLayer.add(eff);
     }
 
 
@@ -1185,6 +1191,15 @@ export class MainScene extends Phaser.Scene {
                         entity.playerEntityId = -1;
                         entity.updateBaseGraphics();
                     }
+                });
+                this.spawnExplosionEffect({
+                    color: hueToColor(entity.hue, 0.5, 0.5),
+                    distance: 32,
+                    duration: 700,
+                    particleCount: 8,
+                    size: { min: 5, max: 8 },
+                    x: entity.x,
+                    y: entity.y,
                 });
                 entity.destroy();
                 delete this.entityList[entity.entityId];

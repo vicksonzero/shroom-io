@@ -6,7 +6,7 @@ import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
 import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
-import { lerpRadians } from '../../utils/utils';
+import { hueToColor, lerpRadians } from '../../utils/utils';
 import { Player } from './Player';
 import { HpBar } from './HpBar';
 
@@ -20,8 +20,6 @@ type GameObject = Phaser.GameObjects.GameObject;
 type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
-
-const HSVToRGB = Phaser.Display.Color.HSVToRGB;
 
 export class Node extends Phaser.GameObjects.Container {
     // entity
@@ -54,6 +52,7 @@ export class Node extends Phaser.GameObjects.Container {
     nodeType: NodeType;
     hp: 100;
     maxHp: 100;
+    hue: number;
 
     // debug
     _debugShowEntityId = true;
@@ -120,10 +119,11 @@ export class Node extends Phaser.GameObjects.Container {
         const isControlling = false;
         const player = this.scene.entityList[this.playerEntityId] as Player;
         if (player) {
-            this.tint = (HSVToRGB(player.hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            this.hue = player.hue;
+            this.tint = hueToColor(this.hue, 0.5, 0.5);
             this.bodySprite.setTint(this.tint);
 
-            const baseTint = (HSVToRGB(player.hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+            const baseTint = hueToColor(this.hue, 0.3, 0.7);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
             this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
@@ -231,6 +231,15 @@ export class Node extends Phaser.GameObjects.Container {
             this.bodySprite.setTexture(key);
             this.bodySprite.setScale(scale);
             this.bodySprite.setOrigin(...origin);
+            this.scene.spawnExplosionEffect({
+                color: hueToColor(this.hue, 0.5, 0.5),
+                distance: 32,
+                duration: 700,
+                particleCount: 6,
+                size: { min: 3, max: 6 },
+                x: this.x,
+                y: this.y,
+            });
         }
 
         if (playerEntityId != this.syncData.playerEntityId) {
@@ -259,17 +268,16 @@ export class Node extends Phaser.GameObjects.Container {
     }
 
     updateBaseGraphics() {
-
         const player = this.scene.entityList[this.playerEntityId] as Player;
         const color = player
-            ? (HSVToRGB(player.hue / 360, 0.5, 0.5, new Phaser.Display.Color()) as Phaser.Display.Color).color
-            : 0xbbbbbb;
+            ? hueToColor(player.hue, 0.5, 0.5)
+            : 0xcccccc;
 
         this.tint = color;
         this.bodySprite.setTint(this.tint);
 
         const baseTint = player
-            ? (HSVToRGB(player.hue / 360, 0.3, 0.7, new Phaser.Display.Color()) as Phaser.Display.Color).color
+            ? hueToColor(player.hue, 0.3, 0.7)
             : 0x999999;
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(baseTint, 0.8);

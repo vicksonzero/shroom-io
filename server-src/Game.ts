@@ -138,7 +138,7 @@ export class Game {
         // TODO: perhaps mark inactive and clean up later?
         const leavingPlayer = this.getPlayerById(playerId);
         if (leavingPlayer == null) {
-            console.warn('onPlayerDisconnected: no player found');
+            spawnLog('onPlayerDisconnected: no player found');
             return;
         }
 
@@ -151,7 +151,7 @@ export class Game {
         this.distanceMatrix.removeTransform(leavingPlayer);
         this.players.splice(this.players.indexOf(leavingPlayer), 1);
 
-        spawnLog(`Deleted player ${leavingPlayer.entityId}`);
+        spawnLog(`Deleted player "${leavingPlayer.name}"(${leavingPlayer.entityId})`);
 
         this.emitToAll(EVT_PLAYER_DISCONNECTED, { playerId: leavingPlayer.entityId });
         return leavingPlayer;
@@ -351,11 +351,15 @@ export class Game {
     updateNodes() {
         for (const node of this.nodes) {
             if (node.nextCanShoot > Date.now()) continue;
+
+            const player = this.players.find(p => p.entityId === node.playerEntityId);
+            if (!player) continue;
+
             node.nextCanShoot = Date.now() + 5000;
 
             const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, 300);
 
-            materialsLog(`updateNodes(node-${node.entityId}) closestEntities[${closestEntities.length}]`);
+            materialsLog(`updateNodes(node-${node.entityId}, player=${player.name}) closestEntities[${closestEntities.length}]`);
 
             const resourceResult = closestEntities
                 .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
@@ -365,9 +369,6 @@ export class Game {
             const [resource, dist] = resourceResult as [Resource, number];
             materialsLog(`resourceResult r-${resource.entityId} dist=${dist}`);
             if (dist > 100) continue;
-
-            const player = this.players.find(p => p.entityId === node.playerEntityId);
-            if (!player) continue;
 
             this.transferMaterials(resource, node, 10, 0, this.fixedElapsedTime, 2000);
 

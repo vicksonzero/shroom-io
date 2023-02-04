@@ -207,12 +207,14 @@ Multiplayer Architecture
 - [x] gather minerals.
 - [x] spend materials to build towers.
 - [ ] The tower can shoot.
+- [ ] nodes can die. dead nodes reduce HP until they die, into resource nodes
+- [ ] Improve network traffic of mining.
+- [ ] perhaps edges should be invisible.
 - [ ] build converters to convert Minerals to Spores.
-- [ ] Towers request Spores, distribution limited by clever network traffic.
 - [ ] kill a tower or kill a node.
 - [ ] make a ranking. the most income wins.
 - [ ] resource nodes can run out, and respawn, to control the maximum colony size.
-- [ ] perhaps edges should be invisible.
+- [ ] Towers request Spores, distribution limited by clever network traffic.
 
 # Credits
 

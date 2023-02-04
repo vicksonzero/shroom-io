@@ -108,7 +108,7 @@ export class PacketEffect extends Phaser.GameObjects.Container {
         const random = randomInUnitDisc();
         this.setPosition(
             toEntity.x + random.x * 8,
-            toEntity.y + random.y * 8,
+            toEntity.y + random.y * 8 - 8,
         );
 
 

@@ -128,6 +128,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
         if (distanceToParentNode < BUILD_RADIUS_MIN) {
             this.nodeImage.setAlpha(0.3);
             this.lineGraphics?.clear();
+            this.bodyGraphics?.setVisible(false);
         } else {
             dx = distanceToParentNode * Math.cos(angle);
             dy = distanceToParentNode * Math.sin(angle);
@@ -137,6 +138,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
                 dx, dy
             )
             this.nodeImage.setAlpha(0.7);
+            this.bodyGraphics?.setVisible(true);
 
         }
         this.setPosition(parentNode.x - dx, parentNode.y - dy);

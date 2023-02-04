@@ -205,7 +205,8 @@ Multiplayer Architecture
 - [x] node, edge.
 - [x] resource nodes.
 - [x] gather minerals.
-- [ ] spend materials to build towers.
+- [x] spend materials to build towers.
+- [ ] The tower can shoot.
 - [ ] build converters to convert Minerals to Spores.
 - [ ] Towers request Spores, distribution limited by clever network traffic.
 - [ ] kill a tower or kill a node.

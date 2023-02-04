@@ -517,6 +517,7 @@ export class MainScene extends Phaser.Scene {
                         x: pointer.x,
                         y: pointer.y,
                     };
+                    this.coordinateLabel.setText(`(${this.mainCamera.scrollX.toFixed(1)}, ${this.mainCamera.scrollY.toFixed(1)})`);
                     event.stopPropagation();
                 }
             })
@@ -1099,6 +1100,7 @@ export class MainScene extends Phaser.Scene {
                     console.log(`Me: ${playerState.eid}`);
                     // this.mainCamera.startFollow(player, true, 0.2, 0.2);
                     this.mainCamera.centerOn(player.x, player.y);
+                    this.coordinateLabel.setText(`(${this.mainCamera.scrollX.toFixed(1)}, ${this.mainCamera.scrollY.toFixed(1)})`);
                     this.mainPlayer = player;
                 }
             } else {
@@ -1119,7 +1121,6 @@ export class MainScene extends Phaser.Scene {
                     //     origAngle: this.entityList[entityId].angle,
                     //     angularVelo: this.entityList[entityId].b2Body?.GetAngularVelocity(),
                     // });
-                    this.coordinateLabel.setText(`(${playerState.x.toFixed(1)}, ${playerState.y.toFixed(1)})`)
                 }
 
                 // if (isCtrl) console.log('handlePlayerStateList', playerState);

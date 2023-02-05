@@ -30,7 +30,7 @@ export class DistanceMatrix {
 
     insertTransform(transform: TransformWithEntityId, transformList = this.getTransformList()) {
         console.log('insertTransform', transform.entityId);
-        
+
         const distanceMatrix = this.distanceMatrix.map((row) => [...row]);
         transformList.forEach((transform2) => {
             this.updateDistanceBetween(transform, transform2, distanceMatrix);
@@ -75,6 +75,6 @@ export class DistanceMatrix {
         );
 
 
-        return result;
+        return result as [entityId: number, dist: number][];
     }
 }

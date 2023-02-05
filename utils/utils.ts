@@ -49,9 +49,3 @@ export function randomInUnitDisc() {
 export function threeDp(val: number) {
     return Math.floor(val * 1000) / 1000;
 }
-
-const HSVToRGB = Phaser.Display.Color.HSVToRGB;
-const HSLToColor = Phaser.Display.Color.HSLToColor;
-export function hueToColor(hue: number, sat: number, val: number) {
-    return (HSVToRGB(hue / 360, sat, val, new Phaser.Display.Color()) as Phaser.Display.Color).color;
-}

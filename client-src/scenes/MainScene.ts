@@ -28,7 +28,7 @@ import {
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
 import { DistanceMatrix } from '../../utils/DistanceMatrix';
 // import { GameObjects } from 'phaser';
-import { capitalize, hueToColor, lerpRadians, threeDp } from '../../utils/utils';
+import { capitalize, lerpRadians, threeDp } from '../../utils/utils';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import { ToggleShootingMessage, DebugInspectReturn, EVT_TOGGLE_SHOOTING, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, NodeKilledMessage, PongMessage, StateMessage } from '../../model/EventsFromServer';
@@ -73,6 +73,12 @@ socketLog.log = console.log.bind(console);
 const warn = Debug('shroom-io:MainScene:warn');
 warn.log = console.warn.bind(console);
 
+
+const HSVToRGB = Phaser.Display.Color.HSVToRGB;
+const HSLToColor = Phaser.Display.Color.HSLToColor;
+export function hueToColor(hue: number, sat: number, val: number) {
+    return (HSVToRGB(hue / 360, sat, val, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+}
 
 export type Controls = { up: Key, down: Key, left: Key, right: Key, action: Key };
 
@@ -1015,8 +1021,9 @@ export class MainScene extends Phaser.Scene {
         // draw edge
         const player = this.entityList[playerEntityId] as Player;
         const parentNode = this.entityList[parentNodeId];
-
-        player.addEdge(parentNode, node);
+        if (parentNode && player) {
+            player.addEdge(parentNode, node);
+        }
 
         return node;
     }

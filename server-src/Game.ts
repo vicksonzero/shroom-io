@@ -38,6 +38,7 @@ import { getUniqueID } from '../model/UniqueID';
 import { threeDp } from '../utils/utils';
 import {
     BUILD_RADIUS_MAX,
+    BUILD_RADIUS_MIN,
     BULLET_FLY_TIME,
     MINING_DISTANCE,
     MINING_INTERVAL,
@@ -87,7 +88,18 @@ export class Game {
         for (let i = 0; i < 10; i++) {
             const player = this.spawnNpc();
         }
+        this.fixedTime.addEvent({
+            delay: 10 * 1000,
+            loop: true,
+            callback: () => {
+                const missing = 20 - this.resources.length;
+                materialsLog(`Respawning ${missing} resources...`);
 
+                for (let i = 0; i < missing; i++) {
+                    this.spawnResource();
+                }
+            }
+        })
     }
 
     getPlayerById(socketId: string) {
@@ -245,7 +257,7 @@ export class Game {
         const dx = parentNode.x - x;
         const dy = parentNode.y - y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > BUILD_RADIUS_MAX) return;
+        if (distance > BUILD_RADIUS_MAX + 10) return;
 
         // TODO: money checks
 
@@ -342,16 +354,16 @@ export class Game {
     spawnNpc() {
         log('spawnNpc');
 
-        const npc = Player.create(names[~~(Math.random() * names.length)]);
+        const npc = Player.create(`AI ${names[~~(Math.random() * names.length)]}`);
         if (npc) this.players.push(npc);
         npc.createPhysics(this.physicsSystem, () => { });
         this.randomizePlayerPosition(npc);
 
         return npc;
-
     }
+
     spawnNode(x: number, y: number, playerEntityId: number, parentNodeId: number) {
-        log('spawnNode');
+        log(`spawnNode ${x}, ${y}, ${playerEntityId}, ${parentNodeId} }}`);
 
         const node = Node.create(playerEntityId, parentNodeId, this.fixedElapsedTime);
         if (node) this.nodes.push(node);
@@ -389,7 +401,66 @@ export class Game {
     }
 
     updatePlayers() {
+        for (const player of this.players) {
+            if (player.isHuman) continue;
 
+            if (player.nextCanShoot > Date.now()) {
+                continue;
+            }
+            player.nextCanShoot = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
+            aiLog(`[${player.entityId}] ai tick:`);
+
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(player.entityId, 100000, 0, 100000);
+
+            if (player.targetId == -1) {
+                const [closestResource] = closestEntities
+                    .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
+                    .find(([e, dist]) => e instanceof Resource) as [Resource, number];
+                player.targetId = closestResource.entityId;
+            }
+            const closestResource = this.resources.find(r => r.entityId === player.targetId);
+            if (!closestResource) {
+                player.targetId = -1;
+                aiLog(`[${player.entityId}] player.targetId lost`);
+
+                continue;
+            }
+
+            const nodesAndPlayers = [...this.nodes, ...this.players];
+
+            const distanceFromResource = this.distanceMatrix.getEntitiesClosestTo(closestResource.entityId, 100000, 0, 100000);
+            const closestNodeToResourceResult = distanceFromResource
+                .map(([entityId, dist]) => [nodesAndPlayers.find(n => n.entityId === entityId), dist])
+                .find(([e, dist]) => e instanceof Node || e instanceof Player) as [Node | Player, number];
+
+            if (!closestNodeToResourceResult) {
+                aiLog(`[${player.entityId}] no node closest to resource`);
+                continue;
+            }
+            const [closestNodeToResource, distToResource] = closestNodeToResourceResult;
+            
+            if (distToResource < MINING_DISTANCE) {
+                player.targetId = -1;
+                aiLog(`[${player.entityId}] resource reached.`);
+                continue;
+            }
+
+
+            const buildDistance = (distToResource > BUILD_RADIUS_MAX ? BUILD_RADIUS_MAX : distToResource) - BUILD_RADIUS_MIN;
+
+
+            const angle = Math.atan2(
+                closestResource.y - closestNodeToResource.y,
+                closestResource.x - closestNodeToResource.x,
+            );
+            const xx = closestNodeToResource.x + Math.cos(angle) * buildDistance;
+            const yy = closestNodeToResource.y + Math.sin(angle) * buildDistance;
+
+            aiLog(`[${player.entityId}] buildDistance ${buildDistance}, angle ${angle}`);
+
+
+            this.spawnNode(xx, yy, player.entityId, closestNodeToResource.entityId);
+        }
     }
 
     updateNodes() {

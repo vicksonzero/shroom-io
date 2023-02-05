@@ -2,12 +2,12 @@ import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, 
 import * as Debug from 'debug';
 import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
-import { MainScene } from '../scenes/MainScene';
+import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
 import { IPlayerState } from '../../model/Player';
 import { getPhysicsDefinitions } from '../../model/Player';
-import { hueToColor, lerpRadians } from '../../utils/utils';
+import { lerpRadians } from '../../utils/utils';
 import { nodeSprites, NodeType } from '../../model/Node';
 import { HpBar } from './HpBar';
 

@@ -55,6 +55,8 @@ export class Node extends Phaser.GameObjects.Container {
     maxHp: 100;
     hue: number;
 
+    isNewestNode = false;
+
     // debug
     _debugShowEntityId = false;
 
@@ -260,9 +262,13 @@ export class Node extends Phaser.GameObjects.Container {
             this.updateBaseGraphics();
         }
 
-
-
-        this.nameTag.setText(this._debugShowEntityId ? `(${this.entityId})` : '');
+        const debugString = this._debugShowEntityId ? ` (n-${this.entityId} of p-${this.playerEntityId})` : '';
+        if (this.isNewestNode) {
+            const player = this.scene.entityList[this.playerEntityId];
+            this.nameTag.setText(player?.name + debugString);
+        } else {
+            this.nameTag.setText(debugString);
+        }
         // this.nameTag.setText(this.name);
 
         // console.log(diceColors);

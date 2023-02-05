@@ -748,9 +748,9 @@ export class MainScene extends Phaser.Scene {
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
                 this.make.image({ key: 'trash', }).setName('Kill'),
-                this.make.image({ key: 'chess_pawn', }).setName('Converter'),
-                this.make.image({ key: 'chess_knight', }).setName('Shooter'),
-                this.make.image({ key: 'chess_rook', }).setName('Swarm'),
+                this.make.sprite({ key: nodeSprites['converter'].key, frame: nodeSprites['converter'].baseIndex, }).setName('Converter').setScale(nodeSprites['converter'].scale),
+                this.make.sprite({ key: nodeSprites['shooter'].key, frame: nodeSprites['shooter'].baseIndex, }).setName('Shooter').setScale(nodeSprites['shooter'].scale),
+                this.make.sprite({ key: nodeSprites['swarm'].key, frame: nodeSprites['swarm'].baseIndex, }).setName('Swarm').setScale(nodeSprites['swarm'].scale),
             ]);
         } else if (node instanceof Node && node.nodeType === 'converter') {
             buttons.push(...[
@@ -1023,6 +1023,8 @@ export class MainScene extends Phaser.Scene {
         const parentNode = this.entityList[parentNodeId];
         if (parentNode && player) {
             player.addEdge(parentNode, node);
+        } else {
+            warn(`parentNode [${parentNodeId}] not found`);
         }
 
         return node;
@@ -1173,8 +1175,10 @@ export class MainScene extends Phaser.Scene {
                     // update node state
                     const node = this.entityList[entityId] as Node;
                     node.applyState(nodeState, dt, false);
+                    node.isNewestNode = (node.entityId === nodes[nodes.length - 1].eid);
                 }
             }
+
         }
 
         for (const resourceState of resourceStates) {

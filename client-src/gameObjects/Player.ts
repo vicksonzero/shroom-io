@@ -247,7 +247,7 @@ export class Player extends Phaser.GameObjects.Container {
 
         const materialStr = `${this.mineralAmount}/${this.ammoAmount}`;
         const entityIdStr = this._debugShowEntityId ? ` (${this.entityId})` : ``;
-        this.nameTag.setText(`${name} (${materialStr}) ${entityIdStr}`);
+        // this.nameTag.setText(`${name} (${materialStr}) ${entityIdStr}`);
 
         // console.log(diceColors);
 

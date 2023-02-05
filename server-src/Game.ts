@@ -37,6 +37,7 @@ import { IBulletState } from '../model/Bullet';
 import { getUniqueID } from '../model/UniqueID';
 import { threeDp } from '../utils/utils';
 import {
+    BUD_COST,
     BUILD_RADIUS_MAX,
     BUILD_RADIUS_MIN,
     BULLET_FLY_TIME,
@@ -44,6 +45,7 @@ import {
     MINING_INTERVAL,
     MINING_TIME,
     SHOOTING_DISTANCE,
+    SHOOTING_INTERVAL,
 } from '../model/constants'
 
 
@@ -260,11 +262,13 @@ export class Game {
         if (distance > BUILD_RADIUS_MAX + 10) return;
 
         // TODO: money checks
-
+        const cost = BUD_COST;
+        if (player.mineralAmount < cost) return;
 
         // TODO: perhaps send some return message if not possible
 
         log('onPlayerCreateNode', x, y);
+        player.mineralAmount -= cost;
         this.spawnNode(x, y, playerEntityId, parentNodeId);
     }
 
@@ -404,19 +408,26 @@ export class Game {
         for (const player of this.players) {
             if (player.isHuman) continue;
 
-            if (player.nextCanShoot > Date.now()) {
+            if (player.aiNextTick > Date.now()) {
                 continue;
             }
-            player.nextCanShoot = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
+            player.aiNextTick = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
             aiLog(`[${player.entityId}] ai tick:`);
+
+            if (player.mineralAmount < BUD_COST) {
+                aiLog(`[${player.entityId}] not enough minerals`);
+                continue;
+            }
 
             const closestEntities = this.distanceMatrix.getEntitiesClosestTo(player.entityId, 100000, 0, 100000);
 
             if (player.targetId == -1) {
-                const [closestResource] = closestEntities
+                const closestResourceResult = closestEntities
                     .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
                     .find(([e, dist]) => e instanceof Resource) as [Resource, number];
-                player.targetId = closestResource.entityId;
+                if (closestResourceResult) {
+                    player.targetId = closestResourceResult[0].entityId;
+                }
             }
             const closestResource = this.resources.find(r => r.entityId === player.targetId);
             if (!closestResource) {
@@ -431,22 +442,28 @@ export class Game {
             const distanceFromResource = this.distanceMatrix.getEntitiesClosestTo(closestResource.entityId, 100000, 0, 100000);
             const closestNodeToResourceResult = distanceFromResource
                 .map(([entityId, dist]) => [nodesAndPlayers.find(n => n.entityId === entityId), dist])
-                .find(([e, dist]) => e instanceof Node || e instanceof Player) as [Node | Player, number];
+                .filter(([e, dist]) => e instanceof Node || e instanceof Player)
+                .find(([e, dist]) => (
+                    (e instanceof Player && e.entityId == player.entityId) ||
+                    (e instanceof Node && e.playerEntityId == player.entityId)
+                )) as [Node | Player, number];
 
             if (!closestNodeToResourceResult) {
                 aiLog(`[${player.entityId}] no node closest to resource`);
                 continue;
             }
             const [closestNodeToResource, distToResource] = closestNodeToResourceResult;
-            
-            if (distToResource < MINING_DISTANCE) {
+
+            if (closestNodeToResource instanceof Node && distToResource < MINING_DISTANCE) {
                 player.targetId = -1;
-                aiLog(`[${player.entityId}] resource reached.`);
+                aiLog(`[${player.entityId}] resource reached (${distToResource}).`);
                 continue;
             }
 
 
-            const buildDistance = (distToResource > BUILD_RADIUS_MAX ? BUILD_RADIUS_MAX : distToResource) - BUILD_RADIUS_MIN;
+            const buildDistance = (distToResource > BUILD_RADIUS_MAX
+                ? BUILD_RADIUS_MAX
+                : distToResource - BUILD_RADIUS_MIN);
 
 
             const angle = Math.atan2(
@@ -465,14 +482,24 @@ export class Game {
 
     updateNodes() {
         for (const node of this.nodes) {
+            if (node.aiNextTick > Date.now()) continue;
+
+            const player = this.players.find(p => p.entityId === node.playerEntityId);
+            if (!player) continue;
+
+            node.aiNextTick = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
+
+            this.updateNodeMining(node, player);
+        }
+        for (const node of this.nodes) {
+            if (node.nodeType !== 'shooter' && node.nodeType !== 'swarm') continue;
             if (node.nextCanShoot > Date.now()) continue;
 
             const player = this.players.find(p => p.entityId === node.playerEntityId);
             if (!player) continue;
 
-            node.nextCanShoot = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
+            node.nextCanShoot = Date.now() + SHOOTING_INTERVAL;
 
-            this.updateNodeMining(node, player);
             this.updateNodeAttack(node, player);
         }
     }

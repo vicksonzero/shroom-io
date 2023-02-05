@@ -5,7 +5,7 @@ export const WORLD_WIDTH = parseInt(process.env.WORLD_WIDTH ?? '2000', 10);
 export const WORLD_HEIGHT = parseInt(process.env.WORLD_HEIGHT ?? '2000', 10);
 export const CAMERA_WIDTH = parseInt(process.env.CAMERA_WIDTH ?? '400', 10);
 export const CAMERA_HEIGHT = parseInt(process.env.CAMERA_HEIGHT ?? '640', 10);
-export const SPAWN_PADDING = parseInt(process.env.SPAWN_PADDING ?? '30', 10);
+export const SPAWN_PADDING = parseInt(process.env.SPAWN_PADDING ?? '200', 10);
 
 
 export const METER_TO_PIXEL = 20; // pixel per meter

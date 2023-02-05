@@ -414,71 +414,83 @@ export class Game {
             player.aiNextTick = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
             aiLog(`[${player.entityId}] ai tick:`);
 
-            if (player.mineralAmount < BUD_COST) {
-                aiLog(`[${player.entityId}] not enough minerals`);
-                continue;
-            }
+            this.updateAiMining(player);
+            this.updateAiAttack(player);
 
-            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(player.entityId, 100000, 0, 100000);
-
-            if (player.targetId == -1) {
-                const closestResourceResult = closestEntities
-                    .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
-                    .find(([e, dist]) => e instanceof Resource) as [Resource, number];
-                if (closestResourceResult) {
-                    player.targetId = closestResourceResult[0].entityId;
-                }
-            }
-            const closestResource = this.resources.find(r => r.entityId === player.targetId);
-            if (!closestResource) {
-                player.targetId = -1;
-                aiLog(`[${player.entityId}] player.targetId lost`);
-
-                continue;
-            }
-
-            const nodesAndPlayers = [...this.nodes, ...this.players];
-
-            const distanceFromResource = this.distanceMatrix.getEntitiesClosestTo(closestResource.entityId, 100000, 0, 100000);
-            const closestNodeToResourceResult = distanceFromResource
-                .map(([entityId, dist]) => [nodesAndPlayers.find(n => n.entityId === entityId), dist])
-                .filter(([e, dist]) => e instanceof Node || e instanceof Player)
-                .find(([e, dist]) => (
-                    (e instanceof Player && e.entityId == player.entityId) ||
-                    (e instanceof Node && e.playerEntityId == player.entityId)
-                )) as [Node | Player, number];
-
-            if (!closestNodeToResourceResult) {
-                aiLog(`[${player.entityId}] no node closest to resource`);
-                continue;
-            }
-            const [closestNodeToResource, distToResource] = closestNodeToResourceResult;
-
-            if (closestNodeToResource instanceof Node && distToResource < MINING_DISTANCE) {
-                player.targetId = -1;
-                aiLog(`[${player.entityId}] resource reached (${distToResource}).`);
-                continue;
-            }
-
-
-            const buildDistance = (distToResource > BUILD_RADIUS_MAX
-                ? BUILD_RADIUS_MAX
-                : distToResource - BUILD_RADIUS_MIN);
-
-
-            const angle = Math.atan2(
-                closestResource.y - closestNodeToResource.y,
-                closestResource.x - closestNodeToResource.x,
-            );
-            const xx = closestNodeToResource.x + Math.cos(angle) * buildDistance;
-            const yy = closestNodeToResource.y + Math.sin(angle) * buildDistance;
-
-            aiLog(`[${player.entityId}] buildDistance ${buildDistance}, angle ${angle}`);
-
-
-            this.spawnNode(xx, yy, player.entityId, closestNodeToResource.entityId);
         }
     }
+
+    updateAiMining(player: Player) {
+
+        if (player.mineralAmount < BUD_COST) {
+            aiLog(`[${player.entityId}] not enough minerals`);
+            return;
+        }
+
+        const closestEntities = this.distanceMatrix.getEntitiesClosestTo(player.entityId, 100000, 0, 100000);
+
+        if (player.targetId == -1) {
+            const closestResourceResult = closestEntities
+                .map(([entityId, dist]) => [this.resources.find(r => r.entityId === entityId), dist])
+                .find(([e, dist]) => e instanceof Resource) as [Resource, number];
+            if (closestResourceResult) {
+                player.targetId = closestResourceResult[0].entityId;
+            }
+        }
+        const closestResource = this.resources.find(r => r.entityId === player.targetId);
+        if (!closestResource) {
+            player.targetId = -1;
+            aiLog(`[${player.entityId}] player.targetId lost`);
+
+            return;
+        }
+
+        const nodesAndPlayers = [...this.nodes, ...this.players];
+
+        const distanceFromResource = this.distanceMatrix.getEntitiesClosestTo(closestResource.entityId, 100000, 0, 100000);
+        const closestNodeToResourceResult = distanceFromResource
+            .map(([entityId, dist]) => [nodesAndPlayers.find(n => n.entityId === entityId), dist])
+            .filter(([e, dist]) => e instanceof Node || e instanceof Player)
+            .find(([e, dist]) => (
+                (e instanceof Player && e.entityId == player.entityId) ||
+                (e instanceof Node && e.playerEntityId == player.entityId)
+            )) as [Node | Player, number];
+
+        if (!closestNodeToResourceResult) {
+            aiLog(`[${player.entityId}] no node closest to resource`);
+            return;
+        }
+        const [closestNodeToResource, distToResource] = closestNodeToResourceResult;
+
+        if (closestNodeToResource instanceof Node && distToResource < MINING_DISTANCE) {
+            player.targetId = -1;
+            aiLog(`[${player.entityId}] resource reached (${distToResource}).`);
+            return;
+        }
+
+
+        const buildDistance = (distToResource > BUILD_RADIUS_MAX
+            ? BUILD_RADIUS_MAX
+            : distToResource - BUILD_RADIUS_MIN);
+
+
+        const angle = Math.atan2(
+            closestResource.y - closestNodeToResource.y,
+            closestResource.x - closestNodeToResource.x,
+        );
+        const xx = closestNodeToResource.x + Math.cos(angle) * buildDistance;
+        const yy = closestNodeToResource.y + Math.sin(angle) * buildDistance;
+
+        aiLog(`[${player.entityId}] buildDistance ${buildDistance}, angle ${angle}`);
+
+
+        this.spawnNode(xx, yy, player.entityId, closestNodeToResource.entityId);
+    }
+
+    updateAiAttack(player: Player) {
+
+    }
+
 
     updateNodes() {
         for (const node of this.nodes) {

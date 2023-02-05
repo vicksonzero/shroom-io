@@ -72,3 +72,42 @@ We also use cloudflare to reverse-proxy the websocket traffic.
     ```bash
     tsc && pm2 start /root/shroom-io/server-dist/server-src/index.js --name shroom-io
     ```
+
+
+
+# Sample nginx file
+
+```
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/www/html;
+
+    # Add index.php to the list if you are using PHP
+    index index.html index.htm index.nginx-debian.html;
+
+    server_name ggj2023.dickson.md;
+
+    location ^~ /assets/ {
+        gzip_static on;
+        expires 12h;
+        add_header Cache-Control public;
+    }
+
+    location / {
+        rewrite ^/$ https://vicksonzero.itch.io/shroom-io?from-nginx=true redirect;
+        proxy_http_version 1.1;
+        proxy_cache_bypass $http_upgrade;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_pass http://localhost:3000;
+    }
+}
+```

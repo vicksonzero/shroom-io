@@ -1,5 +1,5 @@
 
-export type IPacketState = {
+export type IMiningState = {
     entityId: number,
     fromEntityId: number,
     toEntityId: number,

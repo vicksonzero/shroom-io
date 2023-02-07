@@ -35,6 +35,15 @@ export function lerpRadians(a: number, b: number, lerpFactor: number): number// 
 
     return result;
 }
+export function randomOnUnitCircle() {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 1;
+
+    return {
+        x: Math.cos(angle) * r,
+        y: Math.sin(angle) * r,
+    };
+}
 
 export function randomInUnitDisc() {
     const angle = Math.random() * Math.PI * 2;

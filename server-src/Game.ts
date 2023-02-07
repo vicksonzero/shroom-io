@@ -32,7 +32,7 @@ import { names } from '../model/Names'
 import { IPlayerState } from '../model/Player';
 import { INodeState, NodeType } from '../model/Node';
 import { IResourceState } from '../model/Resource';
-import { IPacketState } from '../model/Packet';
+import { IMiningState } from '../model/Mining';
 import { IBulletState } from '../model/Bullet';
 import { getUniqueID } from '../model/UniqueID';
 import { threeDp } from '../utils/utils';
@@ -60,7 +60,7 @@ export class Game {
     public players: Player[] = [];
     public nodes: Node[] = [];
     public resources: Resource[] = [];
-    public packets: IPacketState[] = [];
+    public delayedMiningList: IMiningState[] = [];
     public bullets: IBulletState[] = [];
     sfx_point: any;
 
@@ -343,7 +343,7 @@ export class Game {
         );
         this.distanceMatrix.init();
         this.updateBullets();
-        this.updatePackets();
+        this.updateDelayedMinings();
         this.updateNodes();
         this.updatePlayers();
         this.cleanUpDeadEntities();
@@ -377,7 +377,6 @@ export class Game {
         this.distanceMatrix.insertTransform(node);
 
         return node;
-
     }
     spawnResource() {
         log('spawnResource');
@@ -421,6 +420,7 @@ export class Game {
     }
 
     updateAiMining(player: Player) {
+        return;
 
         if (player.mineralAmount < BUD_COST) {
             aiLog(`[${player.entityId}] not enough minerals`);
@@ -437,13 +437,14 @@ export class Game {
                 player.targetId = closestResourceResult[0].entityId;
             }
         }
-        const closestResource = this.resources.find(r => r.entityId === player.targetId);
-        if (!closestResource) {
+        const closestResourceOrNot = this.resources.find(r => r.entityId === player.targetId);
+        if (!closestResourceOrNot) {
             player.targetId = -1;
             aiLog(`[${player.entityId}] player.targetId lost`);
 
             return;
         }
+        const closestResource = closestResourceOrNot!;
 
         const nodesAndPlayers = [...this.nodes, ...this.players];
 
@@ -562,15 +563,15 @@ export class Game {
         }
     }
 
-    updatePackets() {
-        this.packets.sort((a, b) => a.fromFixedTime + a.timeLength - b.fromFixedTime - b.timeLength);
+    updateDelayedMinings() {
+        this.delayedMiningList.sort((a, b) => a.fromFixedTime + a.timeLength - b.fromFixedTime - b.timeLength);
 
-        const packetReceivers = [
+        const miningReceivers = [
             ...this.players,
             ...this.nodes,
         ];
 
-        for (const packet of this.packets) {
+        for (const mining of this.delayedMiningList) {
             const {
                 fromEntityId,
                 toEntityId,
@@ -580,11 +581,11 @@ export class Game {
 
                 fromFixedTime,
                 timeLength,
-            } = packet;
+            } = mining;
 
             if (fromFixedTime + timeLength > this.fixedElapsedTime) break;
 
-            let toEntity = packetReceivers.find(e => e.entityId === toEntityId);
+            let toEntity = miningReceivers.find(e => e.entityId === toEntityId);
             if (toEntity == null) continue;
 
             if (toEntity instanceof Node) {
@@ -596,10 +597,10 @@ export class Game {
             toEntity.mineralAmount += mineralAmount;
             toEntity.ammoAmount += ammoAmount;
 
-            materialsLog(`updatePackets(${toEntityId}) min+${mineralAmount}=${toEntity.mineralAmount} ammo+${ammoAmount}=${toEntity.ammoAmount}`);
+            materialsLog(`mining (${toEntityId}) min+${mineralAmount}=${toEntity.mineralAmount} ammo+${ammoAmount}=${toEntity.ammoAmount}`);
         }
 
-        this.packets = this.packets.filter(p => (p.fromFixedTime + p.timeLength > this.fixedElapsedTime));
+        this.delayedMiningList = this.delayedMiningList.filter(p => (p.fromFixedTime + p.timeLength > this.fixedElapsedTime));
     }
 
     canTransferMaterials(fromEntity: Player | Node | Resource, toEntity: Player | Node, mineralAmount: number, ammoAmount: number) {
@@ -618,7 +619,7 @@ export class Game {
         fromEntity.mineralAmount -= mineralAmount;
         fromEntity.ammoAmount -= ammoAmount;
 
-        this.packets.push({
+        this.delayedMiningList.push({
             entityId,
             fromEntityId: fromEntity.entityId,
             toEntityId: toEntity.entityId,

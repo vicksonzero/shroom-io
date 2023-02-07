@@ -5,7 +5,6 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { IPacketState } from '../../model/Packet';
 import { lerpRadians, randomInUnitDisc } from '../../utils/utils';
 
 

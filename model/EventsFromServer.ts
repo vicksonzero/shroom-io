@@ -1,6 +1,6 @@
 import { XY } from "@flyover/box2d";
 import { IBulletState } from "./Bullet";
-import { IPacketState } from "./Packet";
+import { IMiningState } from "./Mining";
 import { IPlayerState } from "./Player";
 import { IResourceState } from "./Resource";
 

@@ -5,12 +5,12 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { IPacketState } from '../../model/Packet';
+import { IMiningState } from '../../model/Mining';
 import { lerpRadians, randomInUnitDisc } from '../../utils/utils';
 
 
-const log = Debug('shroom-io:PacketEffect:log');
-// const warn = Debug('shroom-io:PacketEffect:warn');
+const log = Debug('shroom-io:MiningEffect:log');
+// const warn = Debug('shroom-io:MiningEffect:warn');
 // warn.log = console.warn.bind(console);
 
 type Image = Phaser.GameObjects.Image;
@@ -19,7 +19,7 @@ type Container = Phaser.GameObjects.Container;
 type Text = Phaser.GameObjects.Text;
 type Graphics = Phaser.GameObjects.Graphics;
 
-export class PacketEffect extends Phaser.GameObjects.Container {
+export class MiningEffect extends Phaser.GameObjects.Container {
     // entity
     scene: MainScene;
     uniqueID: number;
@@ -84,7 +84,7 @@ export class PacketEffect extends Phaser.GameObjects.Container {
         this.nameTag.setOrigin(0.5, 1);
     }
 
-    init(state: IPacketState, fromEntity: Container, toEntity: Container): this {
+    init(state: IMiningState, fromEntity: Container, toEntity: Container): this {
         const {
             entityId,
             fromEntityId,

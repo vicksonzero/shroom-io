@@ -36,13 +36,13 @@ import { CMD_CHEAT, CMD_CREATE_NODE, CMD_MORPH_NODE, CMD_PING, CMD_START, Create
 import { IPlayerState } from '../../model/Player';
 import { INodeState, nodeSprites } from '../../model/Node';
 import { IResourceState } from '../../model/Resource';
-import { IPacketState } from '../../model/Packet';
+import { IMiningState } from '../../model/Mining';
 
 import { NodeBuilder } from '../gameObjects/NodeBuilder';
 import { Player } from '../gameObjects/Player';
 import { Node } from '../gameObjects/Node';
 import { Resource } from '../gameObjects/Resource';
-import { PacketEffect } from '../gameObjects/PacketEffect';
+import { MiningEffect } from '../gameObjects/MiningEffect';
 import { PingMeter } from '../gameObjects/PingMeter';
 import { ExplosionEffect, ParticleParams } from '../gameObjects/ExplosionEffect';
 
@@ -97,7 +97,7 @@ export class MainScene extends Phaser.Scene {
     lastUpdateTick = Date.now();
 
     entityList: { [x: number]: Player | Node | Resource } = {};
-    effectEntityList: PacketEffect[] = [];
+    effectEntityList: MiningEffect[] = [];
 
     backgroundUILayer: Container;
     factoryLayer: Container;
@@ -359,7 +359,7 @@ export class MainScene extends Phaser.Scene {
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         this.distanceMatrix.init();
-        this.updatePacketEffects(fixedTime, frameSize);
+        this.updateMiningEffects(fixedTime, frameSize);
 
 
         this.fixedTime.update(fixedTime, frameSize);
@@ -906,7 +906,7 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
-    updatePacketEffects(fixedTime: number, frameSize: number) {
+    updateMiningEffects(fixedTime: number, frameSize: number) {
 
         for (const [entityId, entity] of Object.entries(this.entityList)) {
             if (!(entity instanceof Node)) continue;
@@ -933,7 +933,7 @@ export class MainScene extends Phaser.Scene {
             if (dist > MINING_DISTANCE) continue;
 
             // spawn effect
-            this.spawnPacketEffect({
+            this.spawnMiningEffect({
                 entityId: -1,
                 fromEntityId: resource.entityId,
                 toEntityId: node.entityId,
@@ -948,16 +948,16 @@ export class MainScene extends Phaser.Scene {
 
 
         // trigger effect update()
-        for (const packetEffect of this.effectEntityList) {
+        for (const miningEffect of this.effectEntityList) {
 
-            const fromEntity = this.entityList[packetEffect.fromEntityId];
-            const toEntity = this.entityList[packetEffect.toEntityId];
+            const fromEntity = this.entityList[miningEffect.fromEntityId];
+            const toEntity = this.entityList[miningEffect.toEntityId];
             const isInvalid = (
                 fromEntity == null ||
                 toEntity == null
             );
             if (!isInvalid) {
-                packetEffect.fixedUpdate(fixedTime, frameSize);
+                miningEffect.fixedUpdate(fixedTime, frameSize);
             }
         }
     }
@@ -1081,12 +1081,12 @@ export class MainScene extends Phaser.Scene {
         return resource;
     }
 
-    spawnPacketEffect(packetState: IPacketState, fromEntity: Container, toEntity: Container) {
-        console.log('spawnPacketEffect');
-        const eff = new PacketEffect(this);
+    spawnMiningEffect(miningState: IMiningState, fromEntity: Container, toEntity: Container) {
+        console.log('spawnMiningEffect');
+        const eff = new MiningEffect(this);
 
         this.effectsLayer.add(eff);
-        eff.init(packetState, fromEntity, toEntity);
+        eff.init(miningState, fromEntity, toEntity);
 
         this.effectEntityList.push(eff);
 

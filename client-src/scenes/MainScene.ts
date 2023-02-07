@@ -962,6 +962,10 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
+    updateShootingEffects(fixedTime: number, frameSize: number){
+        
+    }
+
     spawnPlayer(playerState: IPlayerState) {
         const player = new Player(this);
 

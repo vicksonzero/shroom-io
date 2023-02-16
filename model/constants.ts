@@ -1,7 +1,7 @@
 
 // mushroom
 
-export const BUILD_RADIUS_MIN = 30;
+export const BUILD_RADIUS_MIN = 50;
 export const BUILD_RADIUS_MAX = 100;
 
 

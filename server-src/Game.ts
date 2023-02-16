@@ -555,7 +555,10 @@ export class Game {
             node.targetId = resource.entityId;
         }
         const targetNodeOrPlayer = [...this.nodes, ...this.players].find(n => n.entityId === node.targetId);
-        if (!targetNodeOrPlayer) return;
+        if (!targetNodeOrPlayer) {
+            node.targetId = -1;
+            return;
+        }
 
         if (targetNodeOrPlayer.hp > 0) {
             // shoot!

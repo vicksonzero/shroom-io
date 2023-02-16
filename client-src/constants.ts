@@ -34,3 +34,8 @@ export const PHYSICS_MAX_FRAME_CATCHUP = 10; // times, default 10 times (10*16 =
 export const WS_URL = "wss://ggj2023.dickson.md";
 // export const WS_URL = localStorage.getItem('md.dickson.ws_url') || 'ws://localhost:3000'
 
+
+
+// graphics
+export const MYCELIUM_DEPTH = -110;
+export const NODE_BASE_DEPTH = -100;

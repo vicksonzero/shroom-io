@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World, XY } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, MYCELIUM_DEPTH, NODE_BASE_DEPTH } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -10,6 +10,7 @@ import { getPhysicsDefinitions } from '../../model/Player';
 import { lerpRadians } from '../../utils/utils';
 import { nodeSprites, NodeType } from '../../model/Node';
 import { HpBar } from './HpBar';
+import { BUILD_RADIUS_MIN } from '../../model/constants';
 
 
 const log = Debug('shroom-io:Player:log');
@@ -43,6 +44,8 @@ export class Player extends Phaser.GameObjects.Container {
     ammoAmount = 0;
 
     nodeType: NodeType = 'root';
+    towerHeight: number;
+    towerWidth: number;
     hue: number;
     hp = 100;
     maxHp = 100;
@@ -76,7 +79,11 @@ export class Player extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
-        const { key, scale, origin } = nodeSprites['bud'];
+        const {
+            key,
+            scale, origin,
+            towerHeight, towerWidth,
+        } = nodeSprites['bud'];
 
         this.add([
             this.baseGraphics = this.scene.make.graphics({
@@ -101,11 +108,15 @@ export class Player extends Phaser.GameObjects.Container {
             //     style: { align: 'left', color: '#000000' },
             // }),
         ]);
+        this.towerHeight = towerHeight;
+        this.towerWidth = towerWidth;
         this.bodySprite
             .setScale(scale)
             .setOrigin(...origin)
             .setTint(this.tint);
 
+        this.baseGraphics.setDepth(NODE_BASE_DEPTH);
+        this.edgeGraphics.setDepth(MYCELIUM_DEPTH);
         this.nameTag.setOrigin(0.5, 1);
     }
 
@@ -115,6 +126,7 @@ export class Player extends Phaser.GameObjects.Container {
         // console.log(`init ${name} (${x}, ${y})`);
 
         this.setPosition(x, y);
+        this.bodySprite.setDepth(y);
         this.r = r;
         this.hue = hue;
         this.hpBar.setPosition(0, 16);
@@ -221,6 +233,7 @@ export class Player extends Phaser.GameObjects.Container {
                 this.x,
                 this.y,
             ); // TODO: lerp instead of set
+            this.bodySprite.setDepth(this.y);
         }
 
         if (hue) {
@@ -231,14 +244,22 @@ export class Player extends Phaser.GameObjects.Container {
             const baseTint = hueToColor((hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
+            this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
         }
 
         this.isControlling = (isCtrl == null ? this.isControlling : isCtrl);
         this.setName(name);
 
         if (this.isControlling) {
-            const { key, scale, origin } = nodeSprites['root'];
+
+            const {
+                key,
+                scale, origin,
+                towerHeight, towerWidth,
+            } = nodeSprites['root'];
+
+            this.towerHeight = towerHeight;
+            this.towerWidth = towerWidth;
             this.bodySprite
                 .setTexture(key)
                 .setScale(scale)

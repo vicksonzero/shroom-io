@@ -20,13 +20,24 @@ export type INodeState = {
     maxHp: 100;
 };
 
-export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origin: [number, number], baseIndex: number, teamIndex: number } } = {
+export type NodeSpriteDef = {
+    key: string,
+    baseIndex: number,
+    teamIndex: number,
+    scale: number,
+    origin: [number, number],
+    towerHeight: number,
+    towerWidth: number,
+};
+export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
     'root': {
         key: 'structure_house',
         baseIndex: 0,
         teamIndex: 0,
         scale: 0.6,
         origin: [0.5, 0.7],
+        towerHeight: 0,
+        towerWidth: 10,
     },
     'bud': {
         key: 'mushrooms',
@@ -34,6 +45,9 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
         teamIndex: 4,
         scale: 0.5,
         origin: [0.5, 0.6],
+        towerHeight: 0,
+        towerWidth: 10,
+
     },
     'converter': {
         key: 'mushrooms',
@@ -41,6 +55,8 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
         teamIndex: 7,
         scale: 1,
         origin: [0.5, 0.9],
+        towerHeight: 20,
+        towerWidth: 15,
     },
     'shooter': {
         key: 'mushrooms',
@@ -48,6 +64,8 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
         teamIndex: 5,
         scale: 1,
         origin: [0.5, 0.95],
+        towerHeight: 30,
+        towerWidth: 15,
     },
     'swarm': {
         key: 'mushrooms',
@@ -55,6 +73,8 @@ export const nodeSprites: { [x in NodeType]: { key: string, scale: number, origi
         teamIndex: 6,
         scale: 1,
         origin: [0.6, 0.95],
+        towerHeight: 30,
+        towerWidth: 15,
     },
 };
 

@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, NODE_BASE_DEPTH, WORLD_HEIGHT } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -9,6 +9,7 @@ import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../
 import { lerpRadians } from '../../utils/utils';
 import { Player } from './Player';
 import { HpBar } from './HpBar';
+import { BUILD_RADIUS_MIN } from '../../model/constants';
 
 
 const log = Debug('shroom-io:Node:log');
@@ -35,6 +36,8 @@ export class Node extends Phaser.GameObjects.Container {
     isControlling: boolean;
     r: number; // radius
     nextCanShoot: number = 0;
+    targetId = -1;
+    aiNextTick = 0;
 
     // sprites
     debugText?: Text;
@@ -51,6 +54,8 @@ export class Node extends Phaser.GameObjects.Container {
     b2Body?: b2Body;
 
     nodeType: NodeType;
+    towerHeight: number;
+    towerWidth: number;
     hp: 100;
     maxHp: 100;
     hue: number;
@@ -73,7 +78,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
-        const { key, scale, origin } = nodeSprites['bud'];
+        const { key, scale, origin, towerHeight, towerWidth } = nodeSprites['bud'];
         this.add([
             this.baseGraphics = this.scene.make.graphics({
                 x: 0, y: 0
@@ -98,6 +103,9 @@ export class Node extends Phaser.GameObjects.Container {
             //     style: { align: 'left', color: '#000000' },
             // }),
         ]);
+        this.towerHeight = towerHeight;
+        this.towerWidth = towerWidth;
+        this.baseGraphics.setDepth(NODE_BASE_DEPTH);
         this.teamSprite.setTint(this.tint);
         this.teamSprite.setScale(scale);
         this.teamSprite.setOrigin(...origin);
@@ -106,6 +114,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.hpBar.setPosition(0, 16);
 
         this.nameTag.setOrigin(0.5, 1);
+        this.nameTag.setDepth(WORLD_HEIGHT);
     }
 
     init(state: INodeState): this {
@@ -118,6 +127,8 @@ export class Node extends Phaser.GameObjects.Container {
         this.parentNodeId = parentNodeId;
         this.birthday = birthday;
         this.setPosition(x, y);
+        this.bodySprite.setDepth(y);
+        this.teamSprite.setDepth(y);
         this.r = r;
         this.hpBar.init(this.hp, this.maxHp);
         this.nodeType = nodeType;
@@ -135,10 +146,18 @@ export class Node extends Phaser.GameObjects.Container {
             const baseTint = hueToColor((this.hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
+            this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
         }
 
-        const { key, scale, origin, baseIndex, teamIndex } = nodeSprites[nodeType];
+        const {
+            key,
+            baseIndex, teamIndex,
+            scale, origin,
+            towerHeight, towerWidth,
+        } = nodeSprites[nodeType];
+
+        this.towerHeight = towerHeight;
+        this.towerWidth = towerWidth;
         this.bodySprite.setTexture(key, baseIndex);
         this.bodySprite.setScale(scale);
         this.bodySprite.setOrigin(...origin);
@@ -197,6 +216,8 @@ export class Node extends Phaser.GameObjects.Container {
             this.x + Math.max(-smoothCap, this.x),
             this.y + Math.max(-smoothCap, this.y),
         ); // TODO: lerp instead of set
+        this.bodySprite.setDepth(y);
+        this.teamSprite.setDepth(y);
 
 
         // this.debugText?.setText(this.isControlling ? `(${x.toFixed(1)}, ${y.toFixed(1)})` : '');
@@ -237,10 +258,20 @@ export class Node extends Phaser.GameObjects.Container {
                 this.x,
                 this.y,
             ); // TODO: lerp instead of set
+            this.bodySprite.setDepth(y);
+            this.teamSprite.setDepth(y);
         }
 
         if (nodeType != this.syncData.nodeType) {
-            const { key, scale, origin, baseIndex, teamIndex } = nodeSprites[nodeType];
+            const {
+                key,
+                baseIndex, teamIndex,
+                scale, origin,
+                towerHeight, towerWidth,
+            } = nodeSprites[nodeType];
+
+            this.towerHeight = towerHeight;
+            this.towerWidth = towerWidth;
             this.bodySprite.setTexture(key, baseIndex);
             this.bodySprite.setScale(scale);
             this.bodySprite.setOrigin(...origin);
@@ -301,6 +332,6 @@ export class Node extends Phaser.GameObjects.Container {
             : 0x999999;
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(baseTint, 0.8);
-        this.baseGraphics.fillEllipse(0, 0, 20 * 2, 20 * 2 * 0.7);
+        this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
     }
 }

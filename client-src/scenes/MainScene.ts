@@ -23,6 +23,8 @@ import {
     MINING_DISTANCE,
     MINING_INTERVAL,
     MINING_TIME,
+    SHOOTING_DISTANCE,
+    SHOOTING_INTERVAL,
 } from '../../model/constants'
 // import { Immutable } from '../utils/ImmutableType';
 import { IBodyUserData, IFixtureUserData, PhysicsSystem } from '../PhysicsSystem';
@@ -43,6 +45,8 @@ import { Player } from '../gameObjects/Player';
 import { Node } from '../gameObjects/Node';
 import { Resource } from '../gameObjects/Resource';
 import { MiningEffect } from '../gameObjects/MiningEffect';
+import { BulletEffect, BulletParams } from '../gameObjects/BulletEffect';
+import { ToastMessage, ToastParams } from '../gameObjects/ToastMessage';
 import { PingMeter } from '../gameObjects/PingMeter';
 import { ExplosionEffect, ParticleParams } from '../gameObjects/ExplosionEffect';
 
@@ -76,8 +80,14 @@ warn.log = console.warn.bind(console);
 
 const HSVToRGB = Phaser.Display.Color.HSVToRGB;
 const HSLToColor = Phaser.Display.Color.HSLToColor;
+
+/**
+ * @param {number} hue - 0-360 degree for the hue of color
+ * @param {number} sat - 0-1 saturation of color. 0 = grayscale, 1 = vibrant color
+ * @param {number} val - 0-1 value of color. 0 = black, 1 = max color
+ */
 export function hueToColor(hue: number, sat: number, val: number) {
-    return (HSVToRGB(hue / 360, sat, val, new Phaser.Display.Color()) as Phaser.Display.Color).color;
+    return (HSVToRGB(hue / 360, sat, val) as Phaser.Display.Color).color;
 }
 
 export type Controls = { up: Key, down: Key, left: Key, right: Key, action: Key };
@@ -103,8 +113,8 @@ export class MainScene extends Phaser.Scene {
     factoryLayer: Container;
     itemLayer: Container;
     cameraInputLayer: Container;
-    tankLayer: Container;
     playerLayer: Container;
+    towerLayer: Container;
     effectsLayer: Container;
     uiLayer: Container;
     physicsDebugLayer: Graphics;
@@ -281,8 +291,8 @@ export class MainScene extends Phaser.Scene {
         this.cameraInputLayer = this.add.container(0, 0);
         this.factoryLayer = this.add.container(0, 0);
         this.itemLayer = this.add.container(0, 0);
-        this.tankLayer = this.add.container(0, 0);
         this.playerLayer = this.add.container(0, 0);
+        this.towerLayer = this.add.container(0, 0);
         this.effectsLayer = this.add.container(0, 0);
         this.uiLayer = this.add.container(0, 0);
         this.physicsDebugLayer = this.add.graphics({ lineStyle: { color: 0x000000, width: 1, alpha: 1 } });
@@ -359,7 +369,7 @@ export class MainScene extends Phaser.Scene {
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
         this.distanceMatrix.init();
-        this.updateMiningEffects(fixedTime, frameSize);
+        this.updateAi(fixedTime, frameSize);
 
 
         this.fixedTime.update(fixedTime, frameSize);
@@ -368,6 +378,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     lateUpdate(fixedTime: number, frameSize: number) {
+        this.playerLayer.sort('depth');
     }
 
     getTransformList = () => Object.values(this.entityList);
@@ -906,47 +917,25 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
-    updateMiningEffects(fixedTime: number, frameSize: number) {
-
+    updateAi(fixedTime: number, frameSize: number) {
         for (const [entityId, entity] of Object.entries(this.entityList)) {
             if (!(entity instanceof Node)) continue;
+            const node = entity as Node;
+            // if it is time for node to spawn effect,
+            if (node.aiNextTick > Date.now()) continue;
+            node.aiNextTick = Date.now() + MINING_INTERVAL;
 
+            this.updateMiningEffects(node);
+        }
+        for (const [entityId, entity] of Object.entries(this.entityList)) {
+            if (!(entity instanceof Node)) continue;
             const node = entity as Node;
             // if it is time for node to spawn effect,
             if (node.nextCanShoot > Date.now()) continue;
-            node.nextCanShoot = Date.now() + MINING_INTERVAL;
+            node.nextCanShoot = Date.now() + SHOOTING_INTERVAL;
 
-            const player = this.entityList[node.playerEntityId];
-            if (!player) continue;
-
-
-            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, MINING_DISTANCE);
-
-            const resourceResult = closestEntities
-                .map(([entityId, dist]) => [this.entityList[entityId], dist])
-                .find(([e, dist]) => e instanceof Resource);
-            if (!resourceResult) continue;
-
-
-            const [resource, dist] = resourceResult as [Resource, number];
-            log(`resourceResult r-${resource.entityId} dist=${dist}`);
-            if (dist > MINING_DISTANCE) continue;
-
-            // spawn effect
-            this.spawnMiningEffect({
-                entityId: -1,
-                fromEntityId: resource.entityId,
-                toEntityId: node.entityId,
-
-                mineralAmount: 10,
-                ammoAmount: 0,
-
-                fromFixedTime: -1,
-                timeLength: MINING_TIME,
-            }, resource, node);
+            this.updateShootingEffects(node);
         }
-
-
         // trigger effect update()
         for (const miningEffect of this.effectEntityList) {
 
@@ -962,8 +951,91 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
-    updateShootingEffects(fixedTime: number, frameSize: number){
-        
+    updateMiningEffects(node: Node) {
+        const player = this.entityList[node.playerEntityId];
+        if (!player) return;
+
+
+        const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, MINING_DISTANCE);
+
+        const resourceResult = closestEntities
+            .map(([entityId, dist]) => [this.entityList[entityId], dist])
+            .find(([e, dist]) => e instanceof Resource);
+        if (!resourceResult) return;
+
+
+        const [resource, dist] = resourceResult as [Resource, number];
+        log(`resourceResult r-${resource.entityId} dist=${dist}`);
+        if (dist > MINING_DISTANCE) return;
+
+        // spawn effect
+        this.spawnMiningEffect({
+            entityId: -1,
+            fromEntityId: resource.entityId,
+            toEntityId: node.entityId,
+
+            mineralAmount: 10,
+            ammoAmount: 0,
+
+            fromFixedTime: -1,
+            timeLength: MINING_TIME,
+        }, resource, node);
+
+
+    }
+
+    updateShootingEffects(node: Node) {
+        console.log('2', node.nodeType);
+        if (node.nodeType !== 'shooter' && node.nodeType !== 'swarm') return;
+        console.log('3');
+
+        if (node.targetId < 0) {
+            console.log('4');
+            const player = this.entityList[node.playerEntityId];
+            if (!player) return;
+            const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, SHOOTING_DISTANCE);
+            const nodeResult = closestEntities
+                .map(([entityId, dist]) => [
+                    this.entityList[entityId],
+                    dist
+                ])
+                .find(([e, dist]) => (
+                    e instanceof Node && e.playerEntityId != player.entityId ||
+                    e instanceof Player && e.entityId != player.entityId));
+            if (!nodeResult) return;
+
+            const [resource, dist] = nodeResult as [Node | Player, number];
+
+            node.targetId = resource.entityId;
+        }
+
+        const targetNodeOrPlayer = this.entityList[node.targetId] as Node | Player;
+        if (!targetNodeOrPlayer) {
+            node.targetId = -1;
+            return;
+        }
+        console.log('5');
+
+        if (targetNodeOrPlayer.hp > 0) {
+            // shoot!
+            this.shootNode(node, targetNodeOrPlayer);
+        }
+    }
+
+    shootNode(fromNode: Node, toNodeOrPlayer: Node | Player) {
+        const eff = new BulletEffect(this, {
+            fromX: fromNode.x,
+            fromY: fromNode.y,
+            fromHeight: fromNode.towerHeight,
+            toX: toNodeOrPlayer.x,
+            toY: toNodeOrPlayer.y,
+            toHeight: toNodeOrPlayer.towerHeight,
+            toWidth: toNodeOrPlayer.towerWidth,
+            duration: 1000,
+            color: hueToColor(fromNode.hue, 0.7, 0.5),
+            size: { min: 4, max: 6 },
+        });
+        this.effectsLayer.add(eff);
     }
 
     spawnPlayer(playerState: IPlayerState) {
@@ -973,7 +1045,7 @@ export class MainScene extends Phaser.Scene {
 
         this.playerLayer.add(player);
         player.init(playerState).initPhysics();
-
+        player.setDepth(-100);
 
         player.setInteractive({
             hitArea: new Phaser.Geom.Circle(0, 0, player.r),
@@ -1003,6 +1075,7 @@ export class MainScene extends Phaser.Scene {
 
         this.playerLayer.add(node);
         node.init(nodeState).initPhysics();
+        node.setDepth(node.y);
 
         node.setInteractive({
             hitArea: new Phaser.Geom.Circle(0, 0, node.r),
@@ -1102,6 +1175,10 @@ export class MainScene extends Phaser.Scene {
         this.effectsLayer.add(eff);
     }
 
+    spawnToast(params: ToastParams) {
+        const eff = new ToastMessage(this, params);
+        this.uiLayer.add(eff);
+    }
 
     handleNodeBuilder(pointer: Pointer) {
         if (!this.nodeBuilder) return;

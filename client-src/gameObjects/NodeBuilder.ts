@@ -2,7 +2,7 @@ import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, 
 import * as Debug from 'debug';
 import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
-import { MainScene } from '../scenes/MainScene';
+import { hueToColor, MainScene, PlayerNode } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
 import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
@@ -35,6 +35,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
     // sprites
     debugText?: Text;
     nameTag: Text;
+    baseGraphics: Graphics;
     bodyGraphics: Graphics;
     lineGraphics: Graphics;
     nodeImage: Image;
@@ -49,6 +50,9 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
             this.lineGraphics = this.scene.make.graphics({
                 x: 0, y: 0,
             }),
+            this.baseGraphics = this.scene.make.graphics({
+                x: 0, y: 0
+            }, false),
             this.nodeImage = this.scene.make.image({
                 x: 0, y: 0,
                 key: 'pawn',
@@ -69,7 +73,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
 
         ]);
 
-
+        this.baseGraphics.setAlpha(0.7);
         this.nodeImage.setScale(0.5);
 
         this.nameTag.setOrigin(0.5, 1);
@@ -102,10 +106,16 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
         this.bodyGraphics.lineStyle(2, color, 1);
         this.bodyGraphics.strokeCircle(0, 0, this.r * 1.5);
 
-        const parentNode = this.scene.entityList[this.parentNodeId];
+        const parentNode = this.scene.entityList[this.parentNodeId] as PlayerNode;
         if (parentNode) {
             this.lineGraphics.lineStyle(5, parentNode.tint);
             this.nodeImage.setTint(parentNode.tint);
+            
+            const baseTint = hueToColor((parentNode.hue + 30) % 360, 0.15, 0.8);
+            this.baseGraphics.clear();
+            this.baseGraphics.fillStyle(baseTint, 0.8);
+            this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
+    
         }
         return this;
     }
@@ -142,6 +152,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
                 dx, dy
             )
             this.nodeImage.setAlpha(0.7);
+            this.baseGraphics.setAlpha(0.7);
             this.bodyGraphics?.setVisible(true);
 
         }

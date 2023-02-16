@@ -1,6 +1,7 @@
 import { XY } from "@flyover/box2d";
 import { IBulletState } from "./Bullet";
 import { IMiningState } from "./Mining";
+import { INodeState } from "./Node";
 import { IPlayerState } from "./Player";
 import { IResourceState } from "./Resource";
 
@@ -20,6 +21,7 @@ export const EVT_STATE = 'EVT_STATE';
 export type StateMessage = {
     tick: number;
     playerStates: IPlayerState[];
+    orphanNodes: INodeState[];
     resourceStates: IResourceState[];
 };
 

@@ -50,6 +50,8 @@ import { ToastMessage, ToastParams } from '../gameObjects/ToastMessage';
 import { PingMeter } from '../gameObjects/PingMeter';
 import { ExplosionEffect, ParticleParams } from '../gameObjects/ExplosionEffect';
 
+export type NodeLike = Node | Player | Resource;
+export type PlayerNode = Node | Player;
 
 type BaseSound = Phaser.Sound.BaseSound;
 type Key = Phaser.Input.Keyboard.Key;
@@ -106,7 +108,7 @@ export class MainScene extends Phaser.Scene {
     lastUpdate = -1;
     lastUpdateTick = Date.now();
 
-    entityList: { [x: number]: Player | Node | Resource } = {};
+    entityList: { [x: number]: NodeLike } = {};
     effectEntityList: MiningEffect[] = [];
 
     backgroundUILayer: Container;
@@ -740,21 +742,21 @@ export class MainScene extends Phaser.Scene {
         return this.buildUi;
     }
 
-    showBuildUi(node: Node | Player) {
+    showBuildUi(playerNode: PlayerNode) {
         this.buildUi.setVisible(true);
         const buttons = [];
 
-        if (node instanceof Player && node.isControlling) {
+        if (playerNode instanceof Player && playerNode.isControlling) {
             this.buildUiInfoLayer.add([
                 this.make.text({ x: 0, y: 30, text: 'Root', style: { align: 'center' }, origin: 0.5 }),
             ]);
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
             ]);
-        } else if (node instanceof Node && node.nodeType === 'bud') {
+        } else if (playerNode instanceof Node && playerNode.nodeType === 'bud') {
             this.buildUiInfoLayer.add([
                 this.make.text({ x: 0, y: 30, text: 'Bud', style: { align: 'center' }, origin: 0.5 }),
-                this.make.text({ x: 0, y: 48, text: `HP: ${node.hp}/${node.maxHp}`, style: { align: 'center' }, origin: 0.5 }),
+                this.make.text({ x: 0, y: 48, text: `HP: ${playerNode.hp}/${playerNode.maxHp}`, style: { align: 'center' }, origin: 0.5 }),
             ]);
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
@@ -763,19 +765,19 @@ export class MainScene extends Phaser.Scene {
                 this.make.sprite({ key: nodeSprites['shooter'].key, frame: nodeSprites['shooter'].baseIndex, }).setName('Shooter').setScale(nodeSprites['shooter'].scale),
                 this.make.sprite({ key: nodeSprites['swarm'].key, frame: nodeSprites['swarm'].baseIndex, }).setName('Swarm').setScale(nodeSprites['swarm'].scale),
             ]);
-        } else if (node instanceof Node && node.nodeType === 'converter') {
+        } else if (playerNode instanceof Node && playerNode.nodeType === 'converter') {
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
                 this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
                 // this.make.image({ key: 'pawn_up' }).setName('Upgrades'),
             ]);
-        } else if (node instanceof Node && node.nodeType === 'shooter') {
+        } else if (playerNode instanceof Node && playerNode.nodeType === 'shooter') {
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
                 this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
                 // this.make.image({ key: 'pawn_up' }).setName('Upgrades'),
             ]);
-        } else if (node instanceof Node && node.nodeType === 'swarm') {
+        } else if (playerNode instanceof Node && playerNode.nodeType === 'swarm') {
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
                 this.make.image({ key: 'pawn_down', }).setName('Downgrade'),
@@ -832,23 +834,23 @@ export class MainScene extends Phaser.Scene {
                     buttonIsDown = false;
                     button.setTint(0xffffff);
 
-                    this.handleBuildButtonClicked(button, node);
+                    this.handleBuildButtonClicked(button, playerNode);
 
                     event.stopPropagation();
                 });
         }
         this.buildUiButtonsLayer.add(buttons);
         this.buildUiButtonsLayer.setPosition(
-            node.x - this.mainCamera.scrollX,
-            node.y - this.mainCamera.scrollY,
+            playerNode.x - this.mainCamera.scrollX,
+            playerNode.y - this.mainCamera.scrollY,
         );
         this.buildUiInfoLayer.setPosition(
-            node.x - this.mainCamera.scrollX,
-            node.y - this.mainCamera.scrollY,
+            playerNode.x - this.mainCamera.scrollX,
+            playerNode.y - this.mainCamera.scrollY,
         );
 
 
-        const { key, scale, origin, baseIndex } = nodeSprites[node.nodeType];
+        const { key, scale, origin, baseIndex } = nodeSprites[playerNode.nodeType];
         this.buildUiButtonsLayer.add(
             this.make.image({ key })
                 .setTexture(key, baseIndex)
@@ -861,7 +863,7 @@ export class MainScene extends Phaser.Scene {
         this.buildUiButtonsLayer.removeAll(true);
         this.buildUi.setVisible(false);
     }
-    handleBuildButtonClicked(button: Phaser.GameObjects.GameObject, node: Node | Player) {
+    handleBuildButtonClicked(button: Phaser.GameObjects.GameObject, playerNode: PlayerNode) {
         console.log('handleBuildButtonClicked', button.name);
         switch (button.name) {
             case 'Back': {
@@ -872,7 +874,7 @@ export class MainScene extends Phaser.Scene {
             } break;
             case 'Converter': {
                 this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: node.entityId,
+                    entityId: playerNode.entityId,
                     toNodeType: 'converter',
                 } as MorphNodeMessage);
 
@@ -880,7 +882,7 @@ export class MainScene extends Phaser.Scene {
             } break;
             case 'Shooter': {
                 this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: node.entityId,
+                    entityId: playerNode.entityId,
                     toNodeType: 'shooter',
                 } as MorphNodeMessage);
 
@@ -888,7 +890,7 @@ export class MainScene extends Phaser.Scene {
             } break;
             case 'Swarm': {
                 this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: node.entityId,
+                    entityId: playerNode.entityId,
                     toNodeType: 'swarm',
                 } as MorphNodeMessage);
 
@@ -896,7 +898,7 @@ export class MainScene extends Phaser.Scene {
             } break;
             case 'Downgrade': {
                 this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: node.entityId,
+                    entityId: playerNode.entityId,
                     toNodeType: 'bud',
                 } as MorphNodeMessage);
 
@@ -918,16 +920,16 @@ export class MainScene extends Phaser.Scene {
     }
 
     updateAi(fixedTime: number, frameSize: number) {
-        for (const [entityId, entity] of Object.entries(this.entityList)) {
+        for (const entity of Object.values(this.entityList)) {
             if (!(entity instanceof Node)) continue;
             const node = entity as Node;
             // if it is time for node to spawn effect,
-            if (node.aiNextTick > Date.now()) continue;
-            node.aiNextTick = Date.now() + MINING_INTERVAL;
+            if (node.nextCanMine > Date.now()) continue;
+            node.nextCanMine = Date.now() + MINING_INTERVAL;
 
             this.updateMiningEffects(node);
         }
-        for (const [entityId, entity] of Object.entries(this.entityList)) {
+        for (const entity of Object.values(this.entityList)) {
             if (!(entity instanceof Node)) continue;
             const node = entity as Node;
             // if it is time for node to spawn effect,
@@ -1004,38 +1006,22 @@ export class MainScene extends Phaser.Scene {
                     e instanceof Player && e.entityId != player.entityId));
             if (!nodeResult) return;
 
-            const [resource, dist] = nodeResult as [Node | Player, number];
+            const [enemyPlayerNode, dist] = nodeResult as [PlayerNode, number];
 
-            node.targetId = resource.entityId;
+            node.targetId = enemyPlayerNode.entityId;
         }
 
-        const targetNodeOrPlayer = this.entityList[node.targetId] as Node | Player;
-        if (!targetNodeOrPlayer) {
+        const targetPlayerNode = this.entityList[node.targetId] as PlayerNode;
+        if (!targetPlayerNode) {
             node.targetId = -1;
             return;
         }
         console.log('5');
 
-        if (targetNodeOrPlayer.hp > 0) {
+        if (targetPlayerNode.hp > 0) {
             // shoot!
-            this.shootNode(node, targetNodeOrPlayer);
+            this.spawnBulletEffect(node, targetPlayerNode);
         }
-    }
-
-    shootNode(fromNode: Node, toNodeOrPlayer: Node | Player) {
-        const eff = new BulletEffect(this, {
-            fromX: fromNode.x,
-            fromY: fromNode.y,
-            fromHeight: fromNode.towerHeight,
-            toX: toNodeOrPlayer.x,
-            toY: toNodeOrPlayer.y,
-            toHeight: toNodeOrPlayer.towerHeight,
-            toWidth: toNodeOrPlayer.towerWidth,
-            duration: 1000,
-            color: hueToColor(fromNode.hue, 0.7, 0.5),
-            size: { min: 4, max: 6 },
-        });
-        this.effectsLayer.add(eff);
     }
 
     spawnPlayer(playerState: IPlayerState) {
@@ -1154,11 +1140,30 @@ export class MainScene extends Phaser.Scene {
 
         this.playerLayer.add(resource);
         resource.init(resourceState).initPhysics();
+        resource.setDepth(resource.y);
 
         return resource;
     }
 
+    spawnBulletEffect(fromNode: Node, toPlayerNode: PlayerNode) {
+        // feel free to put this effect in an object pool when more perf is needed
+        const eff = new BulletEffect(this, {
+            fromX: fromNode.x,
+            fromY: fromNode.y,
+            fromHeight: fromNode.towerHeight,
+            toX: toPlayerNode.x,
+            toY: toPlayerNode.y,
+            toHeight: toPlayerNode.towerHeight,
+            toWidth: toPlayerNode.towerWidth,
+            duration: 1000,
+            color: hueToColor(fromNode.hue, 0.7, 0.5),
+            size: { min: 4, max: 6 },
+        });
+        this.effectsLayer.add(eff);
+    }
+
     spawnMiningEffect(miningState: IMiningState, fromEntity: Container, toEntity: Container) {
+        // feel free to put this effect in an object pool when perf is needed
         console.log('spawnMiningEffect');
         const eff = new MiningEffect(this);
 
@@ -1171,6 +1176,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     spawnExplosionEffect(params: ParticleParams) {
+        // feel free to put this effect in an object pool when perf is needed
         const eff = new ExplosionEffect(this, params);
         this.effectsLayer.add(eff);
     }
@@ -1192,7 +1198,7 @@ export class MainScene extends Phaser.Scene {
 
         if (distance < BUILD_RADIUS_MIN) {
             console.log('handleNodeBuilder upgrade');
-            this.showBuildUi(parentNode as Node | Player);
+            this.showBuildUi(parentNode as PlayerNode);
         } else {
             this.socket.emit(CMD_CREATE_NODE, {
                 x: threeDp(this.nodeBuilder.x),
@@ -1208,7 +1214,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     handlePlayerStateList(stateMessage: StateMessage) {
-        const { tick, playerStates, resourceStates } = stateMessage;
+        const { tick, playerStates, resourceStates, orphanNodes } = stateMessage;
 
         const dt = (tick - this.lastUpdateTick) / 1000;
         this.fixedElapsedTime = tick; // HACK: just forgetting lerping for a while
@@ -1261,6 +1267,18 @@ export class MainScene extends Phaser.Scene {
             }
 
         }
+        for (const nodeState of orphanNodes) {
+            const { eid: entityId } = nodeState;
+            if (!this.entityList[entityId]) {
+                // spawn node
+                const orphanNode = this.entityList[entityId] = this.spawnNode(nodeState);
+            } else {
+                // update node state
+                const orphanNode = this.entityList[entityId] as Node;
+                orphanNode.applyState(nodeState, dt, false);
+                orphanNode.isNewestNode = false;
+            }
+        }
 
         for (const resourceState of resourceStates) {
             const { eid: entityId } = resourceState;
@@ -1282,12 +1300,11 @@ export class MainScene extends Phaser.Scene {
             .filter(e => entityList.includes(e.entityId));
 
         for (const entity of deadEntities) {
-
             if (entity instanceof Node || entity instanceof Player) {
-                this.traverseNodes(entity, 0, (entity, layer) => {
-                    if (entity instanceof Node) {
-                        entity.playerEntityId = -1;
-                        entity.updateBaseGraphics();
+                this.traverseNodes(entity, 0, (playerNode, layer) => {
+                    if (playerNode instanceof Node) {
+                        playerNode.playerEntityId = -1;
+                        playerNode.updateBaseGraphics();
                     }
                 });
                 this.spawnExplosionEffect({
@@ -1318,13 +1335,13 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
-    traverseNodes(entity: Node | Player, layer: number, callback: (entity: Node | Player, layer: number) => void) {
-        if (!entity) return;
-        callback(entity, layer);
+    traverseNodes(playerNode: PlayerNode, layer: number, callback: (playerNode: PlayerNode, layer: number) => void) {
+        if (!playerNode) return;
+        callback(playerNode, layer);
 
         let childrenNodes: Node[] = Object.values(this.entityList)
             .filter((n): n is Node => n instanceof Node)
-            .filter(n => n.parentNodeId == entity.entityId);
+            .filter(n => n.parentNodeId == playerNode.entityId);
         if (!childrenNodes) return;
 
         for (const child of childrenNodes) {

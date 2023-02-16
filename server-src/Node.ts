@@ -24,6 +24,7 @@ export class Node {
     public deleteAfterTick?: number;
 
     public nextCanShoot = 0;
+    public nextCanMine = 0;
 
 
     public name = 'Player';

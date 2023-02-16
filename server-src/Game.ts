@@ -238,10 +238,11 @@ export class Game {
                 return true;
             })
             .map(resource => resource.toStateObject());
-
+        const orphanNodes = this.getNodesByPlayerId(-1).map(n => n.toStateObject());
         return {
             tick: this.fixedElapsedTime,
             playerStates,
+            orphanNodes,
             resourceStates,
         };
     }
@@ -345,6 +346,7 @@ export class Game {
         this.updateBullets();
         this.updateDelayedMinings();
         this.updateNodes();
+
         this.updatePlayers();
         this.cleanUpDeadEntities();
 
@@ -413,13 +415,31 @@ export class Game {
             player.aiNextTick = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
             aiLog(`[${player.entityId}] ai tick:`);
 
-            this.updateAiMining(player);
-            this.updateAiAttack(player);
 
+            // maintain distance to potential enemies (by shortest distance to get in attack range)
+            // calculate the number of potential enemies and their relative power
+            const countNodesUnderAttack = 0; // count nodes under attack for direct danger
+            const defenseCoverage = 0; // 0-1 percent of nodes covered by at least another node of different ancestor, since breaking supply means no more attack
+            const safetyScore = 0; // 0-1 percent of relative safety
+            const incomeScore = 0;  // 0-1 percent of needing to get more income
+
+            // if safetyScore is low, check income and then defend
+            // if safetyScore is not low, think about expanding and defending
+            // if safetyScore is not low and income is kinda low, expand to the nearest / safest mineral patch
+            // if safetyScore is high, check ammo stockpile and think about expanding and attacking
+            // store ai's current strategy, and change strategy when situation changes
+            // offense means attack with the idea of killing an opponent
+            // defense means attack with the idea of not losing
+            // retreat means cut off parts to refund, as well as withdraw from a (potential) fight
+
+            this.doAiExpand(player);
+            this.doAiDefense(player);
+            this.doAiOffense(player);
+            // or just wait
         }
     }
 
-    updateAiMining(player: Player) {
+    doAiExpand(player: Player) {
         return;
 
         if (player.mineralAmount < BUD_COST) {
@@ -488,19 +508,30 @@ export class Game {
         this.spawnNode(xx, yy, player.entityId, closestNodeToResource.entityId);
     }
 
-    updateAiAttack(player: Player) {
+    doAiOffense(player: Player) {
+
+    }
+
+    doAiDefense(player: Player) {
 
     }
 
 
+    hurtNodeIfNoPlayer(node: Node, player?: Player) {
+        if (!player) {
+            node.hp -= 5;
+        }
+    }
+
     updateNodes() {
         for (const node of this.nodes) {
-            if (node.aiNextTick > Date.now()) continue;
+            if (node.nextCanMine > Date.now()) continue;
+            node.nextCanMine = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
 
             const player = this.players.find(p => p.entityId === node.playerEntityId);
-            if (!player) continue;
 
-            node.aiNextTick = Date.now() + MINING_INTERVAL; //  SHOOTING_INTERVAL;
+            this.hurtNodeIfNoPlayer(node, player);
+            if (!player) continue;
 
             this.updateNodeMining(node, player);
         }

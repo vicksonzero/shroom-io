@@ -67,8 +67,8 @@ export class BulletEffect extends Phaser.GameObjects.Container {
 
         for (const [index, sprite] of this.sprites.entries()) {
             const scale = Math.random() * (size.max - size.min) + size.min;
-            const angle = Math.random() * 360;
-            const endAngle = Math.sign(Math.random() * 2 - 1) * 3600 * 3;
+            const angle = Math.random() * 360; // in degrees
+            const endAngle = (Math.random() * 2 - 1) * 360 * 3; // in degrees
 
             sprite
                 .setScale(scale)
@@ -80,14 +80,14 @@ export class BulletEffect extends Phaser.GameObjects.Container {
             this.scene.add.tween({
                 targets: sprite,
                 alpha: 1,
-                duration: 50,
-                delay: index * 100,
+                duration: 100,
+                delay: index * 150,
             });
             this.scene.add.tween({
                 targets: sprite,
                 angle: endAngle,
                 duration,
-                delay: index * 100,
+                delay: index * 150,
             });
             this.scene.add.tween({
                 targets: sprite,
@@ -95,7 +95,7 @@ export class BulletEffect extends Phaser.GameObjects.Container {
                 y: toY - toHeight + (Math.random() * 2 - 1) * toWidth,
                 duration,
                 ease: Phaser.Math.Easing.Quadratic.In,
-                delay: index * 100,
+                delay: index * 150,
             })
                 .on(Phaser.Tweens.Events.TWEEN_COMPLETE, () => {
                     sprite.setVisible(false);

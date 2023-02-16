@@ -36,8 +36,8 @@ export class Node extends Phaser.GameObjects.Container {
     isControlling: boolean;
     r: number; // radius
     nextCanShoot: number = 0;
+    nextCanMine = 0;
     targetId = -1;
-    aiNextTick = 0;
 
     // sprites
     debugText?: Text;
@@ -60,6 +60,9 @@ export class Node extends Phaser.GameObjects.Container {
     maxHp: 100;
     hue: number;
 
+    /** 
+     * is newest node of the player. currently used to show the name of that player so that the root is hidden
+     */
     isNewestNode = false;
 
     // debug

@@ -1203,7 +1203,7 @@ export class MainScene extends Phaser.Scene {
         const collisions = this.getPhysicsSystem().queryCircle(this.nodeBuilder.x, this.nodeBuilder.y, this.nodeBuilder.r * 2);
         const hasCollision = collisions.length > 0;
 
-        if (distance < NODE_RADIUS * 2) {
+        if (distance < NODE_RADIUS) {
             console.log('handleNodeBuilder upgrade');
             this.showBuildUi(parentNode as PlayerNode);
         } else if (hasCollision) {

@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, NODE_BASE_HEIGHT_MULTIPLIER } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -123,7 +123,7 @@ export class Resource extends Phaser.GameObjects.Container {
 
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(0xc728a7, 0.8);
-        this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * 0.7);
+        this.baseGraphics.fillEllipse(0, 0, this.r * 2, this.r * 2 * NODE_BASE_HEIGHT_MULTIPLIER);
 
         return this;
     }

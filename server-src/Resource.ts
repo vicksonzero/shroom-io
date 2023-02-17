@@ -6,6 +6,7 @@ import { PIXEL_TO_METER } from "./constants.js";
 import { IFixtureUserData, PhysicsSystem } from "./PhysicsSystem.js";
 import { IResourceState } from '../model/Resource';
 import { threeDp } from '../utils/utils';
+import { NODE_RADIUS } from '../model/constants';
 
 const verbose = Debug('shroom-io:Resource:verbose');
 const log = Debug('shroom-io:Resource:log');
@@ -38,7 +39,7 @@ export class Resource {
     public x = 0;
     public y = 0;
     public angle = 0;
-    public r = 20;
+    public r = NODE_RADIUS;
     public friction = 0;
     public vx = 0;
     public vy = 0;

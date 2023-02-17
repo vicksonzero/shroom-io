@@ -39,3 +39,4 @@ export const WS_URL = "wss://ggj2023.dickson.md";
 // graphics
 export const MYCELIUM_DEPTH = -110;
 export const NODE_BASE_DEPTH = -100;
+export const NODE_BASE_HEIGHT_MULTIPLIER = 1; // perhaps change to 0.7 to make perceptive illusions.

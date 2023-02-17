@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, NODE_BASE_DEPTH, WORLD_HEIGHT } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, NODE_BASE_DEPTH, WORLD_HEIGHT, NODE_BASE_HEIGHT_MULTIPLIER } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -152,7 +152,7 @@ export class Node extends Phaser.GameObjects.Container {
             const baseTint = hueToColor((this.hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
+            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2 * NODE_BASE_HEIGHT_MULTIPLIER);
         }
 
         const {
@@ -337,6 +337,6 @@ export class Node extends Phaser.GameObjects.Container {
             : 0x999999;
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(baseTint, 0.8);
-        this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
+        this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2 * NODE_BASE_HEIGHT_MULTIPLIER);
     }
 }

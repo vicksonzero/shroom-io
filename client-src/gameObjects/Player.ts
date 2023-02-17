@@ -1,6 +1,6 @@
 import { b2Body, b2BodyDef, b2BodyType, b2CircleShape, b2Fixture, b2FixtureDef, b2World, XY } from '@flyover/box2d';
 import * as Debug from 'debug';
-import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, MYCELIUM_DEPTH, NODE_BASE_DEPTH } from '../constants';
+import { PIXEL_TO_METER, DEGREE_TO_RADIAN, SMOOTH_CAP, SMOOTH_FACTOR, RADIAN_TO_DEGREE, MYCELIUM_DEPTH, NODE_BASE_DEPTH, NODE_BASE_HEIGHT_MULTIPLIER } from '../constants';
 import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
@@ -243,7 +243,7 @@ export class Player extends Phaser.GameObjects.Container {
             const baseTint = hueToColor((hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
+            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2 * NODE_BASE_HEIGHT_MULTIPLIER);
         }
 
         this.isControlling = (isCtrl == null ? this.isControlling : isCtrl);

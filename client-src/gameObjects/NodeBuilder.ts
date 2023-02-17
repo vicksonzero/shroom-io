@@ -10,7 +10,7 @@ import { lerpRadians } from '../../utils/utils';
 
 import {
     BUILD_RADIUS_MAX,
-    BUILD_RADIUS_MIN,
+    NODE_RADIUS,
 } from '../../model/constants'
 
 const log = Debug('shroom-io:NodeBuilder:log');
@@ -110,12 +110,12 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
         if (parentNode) {
             this.lineGraphics.lineStyle(5, parentNode.tint);
             this.nodeImage.setTint(parentNode.tint);
-            
+
             const baseTint = hueToColor((parentNode.hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
-    
+            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
+
         }
         return this;
     }
@@ -139,24 +139,29 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
 
         if (distanceToParentNode > BUILD_RADIUS_MAX) distanceToParentNode = BUILD_RADIUS_MAX;
 
-        if (distanceToParentNode < BUILD_RADIUS_MIN) {
+        dx = distanceToParentNode * Math.cos(angle);
+        dy = distanceToParentNode * Math.sin(angle);
+
+        this.setPosition(parentNode.x - dx, parentNode.y - dy);
+
+        const collisions = this.scene.getPhysicsSystem().queryCircle(this.x, this.y, this.r * 2);
+        const hasCollision = collisions.length > 0;
+
+        if (hasCollision) {
             this.nodeImage.setAlpha(0.3);
             this.lineGraphics?.clear();
             this.bodyGraphics?.setVisible(false);
         } else {
-            dx = distanceToParentNode * Math.cos(angle);
-            dy = distanceToParentNode * Math.sin(angle);
-
-            this.lineGraphics?.clear().lineBetween(
-                0, 0,
-                dx, dy
-            )
+            this.lineGraphics?.clear()
+                .lineStyle(2, parentNode.tint)
+                .lineBetween(
+                    0, 0,
+                    dx, dy
+                );
             this.nodeImage.setAlpha(0.7);
             this.baseGraphics.setAlpha(0.7);
             this.bodyGraphics?.setVisible(true);
-
         }
-        this.setPosition(parentNode.x - dx, parentNode.y - dy);
     }
 
     fixedUpdate(time: number, dt: number) {

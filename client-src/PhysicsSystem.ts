@@ -1,5 +1,5 @@
 
-import { b2Body, b2BodyType, b2CircleShape, b2ContactListener, b2PolygonShape, b2ShapeType, b2World, XY } from "@flyover/box2d";
+import { b2AABB, b2Body, b2BodyType, b2CircleShape, b2ContactListener, b2Fixture, b2PolygonShape, b2ShapeType, b2World, XY } from "@flyover/box2d";
 import { b2JointType } from "@flyover/box2d/Box2D/Dynamics/Joints/b2Joint";
 
 import * as Debug from 'debug';
@@ -126,6 +126,48 @@ export class PhysicsSystem {
             this.world.DestroyBody(body);
         });
         this.scheduledDestroyBodyList = [];
+    }
+
+
+    queryRect(x: number, y: number, w: number, h: number) {
+        const world = this.world;
+
+        const aabb = new b2AABB();
+        aabb.lowerBound.x = 1;
+        aabb.lowerBound.y = 1;
+        aabb.upperBound.x = 1;
+        aabb.upperBound.y = 1;
+
+        world.QueryAABB(aabb, (fixture: b2Fixture) => {
+            let getNext = true;
+
+
+            return getNext;
+        });
+    }
+    /**
+     * @param {number} x - world position in pixel
+     * @param {number} y - world position in pixel
+     * @param {number} r - world radius in pixel
+     */
+    queryCircle(x: number, y: number, r: number) {
+        const world = this.world;
+
+        const aabb = new b2AABB();
+        aabb.lowerBound.x = (x - r) * PIXEL_TO_METER;
+        aabb.lowerBound.y = (y - r) * PIXEL_TO_METER;
+        aabb.upperBound.x = (x + r) * PIXEL_TO_METER;
+        aabb.upperBound.y = (y + r) * PIXEL_TO_METER;
+
+        const result: b2Fixture[] = [];
+        world.QueryAllAABB(aabb, result);
+
+        return result.filter((fixture) => {
+            const fixtureAABB = fixture.GetAABB(0);
+            const center = fixtureAABB.GetCenter();
+            const distance = center.SelfSubXY(x * PIXEL_TO_METER, y * PIXEL_TO_METER).Length();
+            return distance * METER_TO_PIXEL < r;
+        });
     }
 
     debugDraw(graphics: Phaser.GameObjects.Graphics) {

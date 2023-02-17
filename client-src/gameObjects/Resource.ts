@@ -98,7 +98,10 @@ export class Resource extends Phaser.GameObjects.Container {
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
                 text: '',
-                style: { align: 'center', color: '#000000' },
+                style: {
+                    align: 'center', color: '#000000',
+                    stroke: '#dddddd', strokeThickness: 4,
+                },
             }),
             // this.debugText = this.scene.make.text({
             //     x: 32, y: -32,
@@ -200,7 +203,7 @@ export class Resource extends Phaser.GameObjects.Container {
             y,
         );
 
-        this.nameTag.setText(`Resource (${mineralAmount})`);
+        this.nameTag.setText(`Resource\n(${mineralAmount})`);
 
         // console.log(diceColors);
 

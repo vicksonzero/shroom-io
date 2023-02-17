@@ -39,7 +39,7 @@ import { threeDp } from '../utils/utils';
 import {
     BUD_COST,
     BUILD_RADIUS_MAX,
-    BUILD_RADIUS_MIN,
+    NODE_RADIUS,
     BULLET_FLY_TIME,
     MINING_DISTANCE,
     MINING_INTERVAL,
@@ -492,7 +492,7 @@ export class Game {
 
         const buildDistance = (distToResource > BUILD_RADIUS_MAX
             ? BUILD_RADIUS_MAX
-            : distToResource - BUILD_RADIUS_MIN);
+            : distToResource - NODE_RADIUS);
 
 
         const angle = Math.atan2(

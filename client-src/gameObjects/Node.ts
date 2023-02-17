@@ -9,7 +9,7 @@ import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../
 import { lerpRadians } from '../../utils/utils';
 import { Player } from './Player';
 import { HpBar } from './HpBar';
-import { BUILD_RADIUS_MIN } from '../../model/constants';
+import { NODE_RADIUS } from '../../model/constants';
 
 
 const log = Debug('shroom-io:Node:log');
@@ -97,7 +97,10 @@ export class Node extends Phaser.GameObjects.Container {
             this.nameTag = this.scene.make.text({
                 x: 0, y: -32,
                 text: '',
-                style: { align: 'center', color: '#000000' },
+                style: {
+                    align: 'center', color: '#000000',
+                    stroke: '#dddddd', strokeThickness: 4,
+                },
             }),
             this.hpBar = new HpBar(this.scene),
             // this.debugText = this.scene.make.text({
@@ -132,7 +135,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.setPosition(x, y);
         this.bodySprite.setDepth(y);
         this.teamSprite.setDepth(y);
-        this.r = r;
+        this.r = NODE_RADIUS;
         this.hpBar.init(this.hp, this.maxHp);
         this.nodeType = nodeType;
         this.hp = hp;
@@ -149,7 +152,7 @@ export class Node extends Phaser.GameObjects.Container {
             const baseTint = hueToColor((this.hue + 30) % 360, 0.15, 0.8);
             this.baseGraphics.clear();
             this.baseGraphics.fillStyle(baseTint, 0.8);
-            this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
+            this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
         }
 
         const {
@@ -191,10 +194,9 @@ export class Node extends Phaser.GameObjects.Container {
             this.b2Body.CreateFixture(fixtureDef); // a body can have multiple fixtures
             this.b2Body.SetPositionXY(this.x * PIXEL_TO_METER, this.y * PIXEL_TO_METER);
 
-            // this.on('destroy', () => {
-            //     physicsSystem.scheduleDestroyBody(this.b2Body);
-            //     this.b2Body.m_userData.gameObject = null;
-            // });
+            this.on('destroy', () => {
+                this.destroyPhysics();
+            });
             physicsFinishedCallback?.();
         });
 
@@ -335,6 +337,6 @@ export class Node extends Phaser.GameObjects.Container {
             : 0x999999;
         this.baseGraphics.clear();
         this.baseGraphics.fillStyle(baseTint, 0.8);
-        this.baseGraphics.fillEllipse(0, 0, BUILD_RADIUS_MIN, BUILD_RADIUS_MIN);
+        this.baseGraphics.fillEllipse(0, 0, NODE_RADIUS * 2, NODE_RADIUS * 2);
     }
 }

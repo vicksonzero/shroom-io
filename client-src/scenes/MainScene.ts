@@ -1,4 +1,6 @@
 import {
+    b2AABB,
+    b2Body,
     b2Contact, b2ContactImpulse, b2ContactListener,
     b2Fixture, b2Manifold,
     // b2ParticleBodyContact, b2ParticleContact, b2ParticleSystem,
@@ -19,7 +21,7 @@ import {
 } from '../constants';
 import {
     BUILD_RADIUS_MAX,
-    BUILD_RADIUS_MIN,
+    NODE_RADIUS,
     MINING_DISTANCE,
     MINING_INTERVAL,
     MINING_TIME,
@@ -920,7 +922,8 @@ export class MainScene extends Phaser.Scene {
     }
 
     updateAi(fixedTime: number, frameSize: number) {
-        for (const entity of Object.values(this.entityList)) {
+        const entities = Object.values(this.entityList);
+        for (const entity of entities) {
             if (!(entity instanceof Node)) continue;
             const node = entity as Node;
             // if it is time for node to spawn effect,
@@ -929,7 +932,7 @@ export class MainScene extends Phaser.Scene {
 
             this.updateMiningEffects(node);
         }
-        for (const entity of Object.values(this.entityList)) {
+        for (const entity of entities) {
             if (!(entity instanceof Node)) continue;
             const node = entity as Node;
             // if it is time for node to spawn effect,
@@ -1047,7 +1050,7 @@ export class MainScene extends Phaser.Scene {
                 console.log('player pointerdown');
                 const xx = pointer.x + this.mainCamera.scrollX;
                 const yy = pointer.y + this.mainCamera.scrollY;
-                this.nodeBuilder = this.spawnNodeBuilder(xx, yy, player.r, player.entityId, player.entityId);
+                this.nodeBuilder = this.spawnNodeBuilder(xx, yy, NODE_RADIUS, player.entityId, player.entityId);
                 eventCtrl.stopPropagation();
             })
 
@@ -1196,9 +1199,15 @@ export class MainScene extends Phaser.Scene {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
 
-        if (distance < BUILD_RADIUS_MIN) {
+
+        const collisions = this.getPhysicsSystem().queryCircle(this.nodeBuilder.x, this.nodeBuilder.y, this.nodeBuilder.r * 2);
+        const hasCollision = collisions.length > 0;
+
+        if (distance < NODE_RADIUS * 2) {
             console.log('handleNodeBuilder upgrade');
             this.showBuildUi(parentNode as PlayerNode);
+        } else if (hasCollision) {
+            // do nothing
         } else {
             this.socket.emit(CMD_CREATE_NODE, {
                 x: threeDp(this.nodeBuilder.x),
@@ -1301,7 +1310,7 @@ export class MainScene extends Phaser.Scene {
 
         for (const entity of deadEntities) {
             if (entity instanceof Node || entity instanceof Player) {
-                this.traverseNodes(entity, 0, (playerNode, layer) => {
+                this.traverseNodes(entity, 0, null, (playerNode, layer) => {
                     if (playerNode instanceof Node) {
                         playerNode.playerEntityId = -1;
                         playerNode.updateBaseGraphics();
@@ -1335,22 +1344,39 @@ export class MainScene extends Phaser.Scene {
         }
     }
 
-    traverseNodes(playerNode: PlayerNode, layer: number, callback: (playerNode: PlayerNode, layer: number) => void) {
+    /**
+     *  
+     * @param {PlayerNode} playerNode - any node-like stuff owned by a player. Can start from any node or the root
+     * @param {number} layer - holder to count how many layers down the tree. Start by calling with value `0`.
+     * @param {Node[] | null} allNodes - cache of the array version of node list. Start by calling with value `null`.
+     */
+    traverseNodes(
+        playerNode: PlayerNode,
+        layer: number,
+        allNodes: Node[] | null,
+        callback: (playerNode: PlayerNode, layer: number) => void
+    ) {
         if (!playerNode) return;
         callback(playerNode, layer);
+        if (!allNodes) {
+            allNodes = Object.values(this.entityList)
+                .filter((n): n is Node => n instanceof Node);
+        }
 
-        let childrenNodes: Node[] = Object.values(this.entityList)
-            .filter((n): n is Node => n instanceof Node)
+        let childrenNodes: Node[] = allNodes
             .filter(n => n.parentNodeId == playerNode.entityId);
         if (!childrenNodes) return;
 
         for (const child of childrenNodes) {
-            this.traverseNodes(child, layer + 1, callback);
+            this.traverseNodes(child, layer + 1, allNodes, callback);
         }
     }
 
 
-    addToList(gameObject: (GameObjects.Container & { uniqueID: number }), list: (GameObjects.Container & { uniqueID: number })[]) {
+    addToList(
+        gameObject: (GameObjects.Container & { uniqueID: number }),
+        list: (GameObjects.Container & { uniqueID: number })[]
+    ) {
         list.push(gameObject);
         // this.instancesByID[gameObject.uniqueID] = gameObject;
         gameObject.on(Phaser.GameObjects.Events.DESTROY, () => {
@@ -1358,7 +1384,6 @@ export class MainScene extends Phaser.Scene {
             // delete this.instancesByID[gameObject.uniqueID];
         });
     }
-
 
 
 

@@ -124,14 +124,16 @@ Multiplayer Architecture
 - [x] spend materials to build towers.
 - [x] The tower can shoot.
 - [x] Nodes can die. 
-- [ ] Dead nodes reduce HP until they die, into resource nodes
-- [ ] Improve network traffic of mining.
+- [x] Orphan nodes reduce HP until they die
+- [ ] Dead nodes become small resource nodes
+- [x] Improve network traffic of mining.
 - [ ] perhaps edges should be invisible.
 - [ ] build converters to convert Minerals to Spores.
-- [ ] kill a tower or kill a node.
+- [x] kill a tower or kill a node.
 - [ ] make a ranking. the most income wins.
-- [ ] resource nodes can run out, and respawn, to control the maximum colony size.
-- [ ] Towers request Spores, distribution limited by clever network traffic.
+- [x] resource nodes can run out, and respawn, to control the maximum colony size.
+- [ ] Towers require Spores, 
+- [ ] ~~distribution limited by clever network traffic.~~
 - [ ] Include Git revision number on client and server
 
 # Credits

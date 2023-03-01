@@ -30,7 +30,7 @@ import { Clock } from '../model/PhaserClock';
 import { DistanceMatrix } from '../utils/DistanceMatrix'
 import { names } from '../model/Names'
 import { IPlayerState } from '../model/Player';
-import { INodeState, NodeType } from '../model/Node';
+import { INodeState, nodeDefs, NodeType } from '../model/Node';
 import { IResourceState } from '../model/Resource';
 import { IMiningState } from '../model/Mining';
 import { IBulletState } from '../model/Bullet';
@@ -263,13 +263,17 @@ export class Game {
         if (distance > BUILD_RADIUS_MAX + 10) return;
 
         // TODO: money checks
-        const cost = BUD_COST;
-        if (player.mineralAmount < cost) return;
+        const { costMineralAmount, costAmmoAmount } = nodeDefs['bud'];
+        const out = { message: '' };
+        if (!this.playerHasMaterials(player, costMineralAmount, costAmmoAmount, out)) {
+            // TODO: perhaps send some return message if not possible
+            return;
+        }
 
-        // TODO: perhaps send some return message if not possible
 
         log('onPlayerCreateNode', x, y);
-        player.mineralAmount -= cost;
+        player.mineralAmount -= costMineralAmount;
+        player.mineralAmount -= costAmmoAmount;
         this.spawnNode(x, y, playerEntityId, parentNodeId);
     }
 
@@ -282,6 +286,19 @@ export class Game {
         // TODO: checking
         // if (node.playerEntityId !== player.entityId) return;
 
+        // cost checking
+        const { costMineralAmount, costAmmoAmount } = nodeDefs[toNodeType];
+        const out = { message: '' };
+        if (!this.playerHasMaterials(player, costMineralAmount, costAmmoAmount, out)) {
+            // TODO: perhaps send some return message if not possible
+            return;
+        }
+
+        // pay cost
+        player.mineralAmount -= costMineralAmount;
+        player.mineralAmount -= costAmmoAmount;
+
+        // morph node
         node.nodeType = toNodeType;
     }
 
@@ -521,6 +538,19 @@ export class Game {
         if (!player) {
             node.hp -= 5;
         }
+    }
+
+    playerHasMaterials(player: Player, costMineralAmount: number, costAmmoAmount: number, out: { message: string }) {
+        if (!(player.mineralAmount >= costMineralAmount)) {
+            out.message = `Not enough Mineral`;
+            return false;
+        }
+        if (!(player.ammoAmount >= costAmmoAmount)) {
+            out.message = `Not enough Ammo`;
+            return false;
+        }
+
+        return true;
     }
 
     updateNodes() {

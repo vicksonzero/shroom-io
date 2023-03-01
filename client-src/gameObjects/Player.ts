@@ -8,7 +8,7 @@ import { config } from '../config/config';
 import { IPlayerState } from '../../model/Player';
 import { getPhysicsDefinitions } from '../../model/Player';
 import { lerpRadians } from '../../utils/utils';
-import { nodeSprites, NodeType } from '../../model/Node';
+import { nodeDefs, NodeType } from '../../model/Node';
 import { HpBar } from './HpBar';
 import { NODE_RADIUS } from '../../model/constants';
 
@@ -83,7 +83,7 @@ export class Player extends Phaser.GameObjects.Container {
             key,
             scale, origin,
             towerHeight, towerWidth,
-        } = nodeSprites['bud'];
+        } = nodeDefs['bud'];
 
         this.add([
             this.baseGraphics = this.scene.make.graphics({
@@ -255,7 +255,7 @@ export class Player extends Phaser.GameObjects.Container {
                 key,
                 scale, origin,
                 towerHeight, towerWidth,
-            } = nodeSprites['root'];
+            } = nodeDefs['root'];
 
             this.towerHeight = towerHeight;
             this.towerWidth = towerWidth;

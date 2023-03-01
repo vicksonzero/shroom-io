@@ -5,7 +5,7 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { hueToColor, MainScene, PlayerNode } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
+import { getPhysicsDefinitions, INodeState, nodeDefs, NodeType } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
 
 import {
@@ -95,7 +95,7 @@ export class NodeBuilder extends Phaser.GameObjects.Container {
 
 
 
-        const { key, scale, origin, baseIndex } = nodeSprites[this.nodeType];
+        const { key, scale, origin, baseIndex } = nodeDefs[this.nodeType];
         this.nodeImage
             .setTexture(key, baseIndex)
             .setScale(scale)

@@ -5,7 +5,7 @@ import { IBodyUserData, IFixtureUserData } from '../PhysicsSystem';
 import { MainScene, hueToColor } from '../scenes/MainScene';
 import { getUniqueID } from '../../model/UniqueID';
 import { config } from '../config/config';
-import { getPhysicsDefinitions, INodeState, nodeSprites, NodeType } from '../../model/Node';
+import { getPhysicsDefinitions, INodeState, nodeDefs, NodeType } from '../../model/Node';
 import { lerpRadians } from '../../utils/utils';
 import { Player } from './Player';
 import { HpBar } from './HpBar';
@@ -81,7 +81,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.createSprite();
     }
     createSprite() {
-        const { key, scale, origin, towerHeight, towerWidth } = nodeSprites['bud'];
+        const { key, scale, origin, towerHeight, towerWidth } = nodeDefs['bud'];
         this.add([
             this.baseGraphics = this.scene.make.graphics({
                 x: 0, y: 0
@@ -119,6 +119,7 @@ export class Node extends Phaser.GameObjects.Container {
         this.bodySprite.setOrigin(...origin);
         this.hpBar.setPosition(0, 16);
 
+        this.nameTag.setY(-this.towerHeight - 28);
         this.nameTag.setOrigin(0.5, 1);
         this.nameTag.setDepth(WORLD_HEIGHT);
     }
@@ -160,10 +161,11 @@ export class Node extends Phaser.GameObjects.Container {
             baseIndex, teamIndex,
             scale, origin,
             towerHeight, towerWidth,
-        } = nodeSprites[nodeType];
+        } = nodeDefs[nodeType];
 
         this.towerHeight = towerHeight;
         this.towerWidth = towerWidth;
+        this.nameTag.setY(-this.towerHeight - 20);
         this.bodySprite.setTexture(key, baseIndex);
         this.bodySprite.setScale(scale);
         this.bodySprite.setOrigin(...origin);
@@ -273,10 +275,11 @@ export class Node extends Phaser.GameObjects.Container {
                 baseIndex, teamIndex,
                 scale, origin,
                 towerHeight, towerWidth,
-            } = nodeSprites[nodeType];
+            } = nodeDefs[nodeType];
 
             this.towerHeight = towerHeight;
             this.towerWidth = towerWidth;
+            this.nameTag.setY(-this.towerHeight - 20);
             this.bodySprite.setTexture(key, baseIndex);
             this.bodySprite.setScale(scale);
             this.bodySprite.setOrigin(...origin);

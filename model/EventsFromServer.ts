@@ -49,3 +49,17 @@ export type PongMessage = {
     pingId: number,
     serverTimestamp: number,
 }
+
+export const EVT_TOAST = 'EVT_TOAST';
+export type ToastMessage = {
+    msg: string,
+    priority: number, // higher priority will push lower priority away
+    // toast duration will be constant
+}
+export const EVT_POS_TOAST = 'EVT_POS_TOAST'; // position toast
+export type PosToastMessage = {
+    msg: string,
+    x: number,
+    y: number,
+    // toast duration will be constant
+}

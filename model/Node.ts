@@ -20,7 +20,7 @@ export type INodeState = {
     maxHp: 100;
 };
 
-export type NodeSpriteDef = {
+export type NodeDef = {
     key: string,
     baseIndex: number,
     teamIndex: number,
@@ -28,8 +28,10 @@ export type NodeSpriteDef = {
     origin: [number, number],
     towerHeight: number,
     towerWidth: number,
+    costMineralAmount: number,
+    costAmmoAmount: number,
 };
-export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
+export const nodeDefs: { [x in NodeType]: NodeDef } = {
     'root': {
         key: 'structure_house',
         baseIndex: 0,
@@ -38,6 +40,8 @@ export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
         origin: [0.5, 0.7],
         towerHeight: 0,
         towerWidth: 10,
+        costMineralAmount: 0,
+        costAmmoAmount: 0,
     },
     'bud': {
         key: 'mushrooms',
@@ -47,7 +51,8 @@ export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
         origin: [0.5, 0.6],
         towerHeight: 0,
         towerWidth: 10,
-
+        costMineralAmount: 0,
+        costAmmoAmount: 0,
     },
     'converter': {
         key: 'mushrooms',
@@ -57,6 +62,8 @@ export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
         origin: [0.5, 0.9],
         towerHeight: 20,
         towerWidth: 15,
+        costMineralAmount: 20,
+        costAmmoAmount: 0,
     },
     'shooter': {
         key: 'mushrooms',
@@ -66,6 +73,8 @@ export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
         origin: [0.5, 0.95],
         towerHeight: 30,
         towerWidth: 15,
+        costMineralAmount: 20,
+        costAmmoAmount: 0,
     },
     'swarm': {
         key: 'mushrooms',
@@ -75,6 +84,8 @@ export const nodeSprites: { [x in NodeType]: NodeSpriteDef } = {
         origin: [0.6, 0.95],
         towerHeight: 30,
         towerWidth: 15,
+        costMineralAmount: 40,
+        costAmmoAmount: 0,
     },
 };
 

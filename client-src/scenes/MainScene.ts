@@ -38,7 +38,7 @@ import type { Socket } from "socket.io-client";
 import { ToggleShootingMessage, DebugInspectReturn, EVT_TOGGLE_SHOOTING, EVT_DEBUG_INSPECT_RETURN, EVT_IO_CONNECT, EVT_IO_CONNECT_ERROR, EVT_IO_DISCONNECT, EVT_IO_RECONNECT, EVT_IO_RECONNECT_ATTEMPT, EVT_NODE_KILLED, EVT_PLAYER_DISCONNECTED, EVT_PONG, EVT_STATE, EVT_WELCOME, NodeKilledMessage, PongMessage, StateMessage } from '../../model/EventsFromServer';
 import { CMD_CHEAT, CMD_CREATE_NODE, CMD_MORPH_NODE, CMD_PING, CMD_START, CreateNodeMessage, MorphNodeMessage, StartMessage } from '../../model/EventsFromClient';
 import { IPlayerState } from '../../model/Player';
-import { INodeState, nodeSprites } from '../../model/Node';
+import { INodeState, nodeDefs } from '../../model/Node';
 import { IResourceState } from '../../model/Resource';
 import { IMiningState } from '../../model/Mining';
 
@@ -763,9 +763,9 @@ export class MainScene extends Phaser.Scene {
             buttons.push(...[
                 this.make.image({ key: 'cross', }).setName('Back'),
                 this.make.image({ key: 'trash', }).setName('Kill'),
-                this.make.sprite({ key: nodeSprites['converter'].key, frame: nodeSprites['converter'].baseIndex, }).setName('Converter').setScale(nodeSprites['converter'].scale),
-                this.make.sprite({ key: nodeSprites['shooter'].key, frame: nodeSprites['shooter'].baseIndex, }).setName('Shooter').setScale(nodeSprites['shooter'].scale),
-                this.make.sprite({ key: nodeSprites['swarm'].key, frame: nodeSprites['swarm'].baseIndex, }).setName('Swarm').setScale(nodeSprites['swarm'].scale),
+                this.make.sprite({ key: nodeDefs['converter'].key, frame: nodeDefs['converter'].baseIndex, }).setName('Converter').setScale(nodeDefs['converter'].scale),
+                this.make.sprite({ key: nodeDefs['shooter'].key, frame: nodeDefs['shooter'].baseIndex, }).setName('Shooter').setScale(nodeDefs['shooter'].scale),
+                this.make.sprite({ key: nodeDefs['swarm'].key, frame: nodeDefs['swarm'].baseIndex, }).setName('Swarm').setScale(nodeDefs['swarm'].scale),
             ]);
         } else if (playerNode instanceof Node && playerNode.nodeType === 'converter') {
             buttons.push(...[
@@ -852,7 +852,7 @@ export class MainScene extends Phaser.Scene {
         );
 
 
-        const { key, scale, origin, baseIndex } = nodeSprites[playerNode.nodeType];
+        const { key, scale, origin, baseIndex } = nodeDefs[playerNode.nodeType];
         this.buildUiButtonsLayer.add(
             this.make.image({ key })
                 .setTexture(key, baseIndex)
@@ -875,27 +875,63 @@ export class MainScene extends Phaser.Scene {
 
             } break;
             case 'Converter': {
-                this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: playerNode.entityId,
-                    toNodeType: 'converter',
-                } as MorphNodeMessage);
-
+                const { costMineralAmount: costM, costAmmoAmount: costA } = nodeDefs['converter'];
+                const out = { message: '' };
+                if (this.playerHasMaterials(costM, costA, out)) {
+                    this.socket.emit(CMD_MORPH_NODE, {
+                        entityId: playerNode.entityId,
+                        toNodeType: 'converter',
+                    } as MorphNodeMessage);
+                } else {
+                    this.spawnToast({
+                        color: 0xff0000,
+                        duration: 2000,
+                        height: 10,
+                        text: out.message,
+                        x: playerNode.x,
+                        y: playerNode.y,
+                    });
+                }
                 this.hideBuildUi();
             } break;
             case 'Shooter': {
-                this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: playerNode.entityId,
-                    toNodeType: 'shooter',
-                } as MorphNodeMessage);
-
+                const { costMineralAmount: costM, costAmmoAmount: costA } = nodeDefs['shooter'];
+                const out = { message: '' };
+                if (this.playerHasMaterials(costM, costA, out)) {
+                    this.socket.emit(CMD_MORPH_NODE, {
+                        entityId: playerNode.entityId,
+                        toNodeType: 'shooter',
+                    } as MorphNodeMessage);
+                } else {
+                    this.spawnToast({
+                        color: 0xff0000,
+                        duration: 2000,
+                        height: 10,
+                        text: out.message,
+                        x: playerNode.x,
+                        y: playerNode.y,
+                    });
+                }
                 this.hideBuildUi();
             } break;
             case 'Swarm': {
-                this.socket.emit(CMD_MORPH_NODE, {
-                    entityId: playerNode.entityId,
-                    toNodeType: 'swarm',
-                } as MorphNodeMessage);
-
+                const { costMineralAmount: costM, costAmmoAmount: costA } = nodeDefs['swarm'];
+                const out = { message: '' };
+                if (this.playerHasMaterials(costM, costA, out)) {
+                    this.socket.emit(CMD_MORPH_NODE, {
+                        entityId: playerNode.entityId,
+                        toNodeType: 'swarm',
+                    } as MorphNodeMessage);
+                } else {
+                    this.spawnToast({
+                        color: 0xff0000,
+                        duration: 2000,
+                        height: 10,
+                        text: out.message,
+                        x: playerNode.x,
+                        y: playerNode.y,
+                    });
+                }
                 this.hideBuildUi();
             } break;
             case 'Downgrade': {
@@ -990,12 +1026,9 @@ export class MainScene extends Phaser.Scene {
     }
 
     updateShootingEffects(node: Node) {
-        console.log('2', node.nodeType);
         if (node.nodeType !== 'shooter' && node.nodeType !== 'swarm') return;
-        console.log('3');
 
         if (node.targetId < 0) {
-            console.log('4');
             const player = this.entityList[node.playerEntityId];
             if (!player) return;
             const closestEntities = this.distanceMatrix.getEntitiesClosestTo(node.entityId, 100000, 0, SHOOTING_DISTANCE);
@@ -1019,7 +1052,6 @@ export class MainScene extends Phaser.Scene {
             node.targetId = -1;
             return;
         }
-        console.log('5');
 
         if (targetPlayerNode.hp > 0) {
             // shoot!
@@ -1055,6 +1087,22 @@ export class MainScene extends Phaser.Scene {
             })
 
         return player;
+    }
+
+    playerHasMaterials(costMineralAmount: number, costAmmoAmount: number, out: { message: string }) {
+        if (!(this.mainPlayer)) {
+            return false;
+        }
+        if (!(this.mainPlayer.mineralAmount >= costMineralAmount)) {
+            out.message = `Not enough Mineral`;
+            return false;
+        }
+        if (!(this.mainPlayer.ammoAmount >= costAmmoAmount)) {
+            out.message = `Not enough Ammo`;
+            return false;
+        }
+
+        return true;
     }
 
     spawnNode(nodeState: INodeState) {
@@ -1185,8 +1233,10 @@ export class MainScene extends Phaser.Scene {
     }
 
     spawnToast(params: ToastParams) {
+        console.log('spawnToast', params);
+
         const eff = new ToastMessage(this, params);
-        this.uiLayer.add(eff);
+        this.effectsLayer.add(eff);
     }
 
     handleNodeBuilder(pointer: Pointer) {

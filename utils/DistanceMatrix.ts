@@ -43,17 +43,34 @@ export class DistanceMatrix {
     }
 
     updateDistanceBetween(transform1: TransformWithEntityId, transform2: TransformWithEntityId, distanceMatrix: number[][]) {
-        const dx = transform1.x - transform2.x;
-        const dy = transform1.y - transform2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = this.distanceBetween(transform1, transform2);
         if (!distanceMatrix[transform1.entityId]) {
             distanceMatrix[transform1.entityId] = [];
+        }
+        if (!distanceMatrix[transform2.entityId]) {
+            distanceMatrix[transform2.entityId] = [];
         }
         distanceMatrix[transform1.entityId][transform2.entityId] = distance;
         distanceMatrix[transform2.entityId][transform1.entityId] = distance;
     }
 
-    getDistanceBetween(transform1: TransformWithEntityId, transform2: TransformWithEntityId) {
+    distanceBetween(transform1: TransformWithEntityId, transform2: TransformWithEntityId) {
+        const dx = transform1.x - transform2.x;
+        const dy = transform1.y - transform2.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    getDistanceBetween(transform1: TransformWithEntityId, transform2: TransformWithEntityId): number {
+        if (transform1.entityId > transform2.entityId) {
+            return this.getDistanceBetween(transform2, transform1);
+        }
+        if (!this.distanceMatrix[transform1.entityId]) {
+            this.distanceMatrix[transform1.entityId] = [];
+        }
+        if (this.distanceMatrix[transform1.entityId][transform2.entityId] == null) {
+            this.distanceMatrix[transform1.entityId][transform2.entityId] =
+                this.distanceBetween(transform1, transform2);
+        }
         return this.distanceMatrix[transform1.entityId][transform2.entityId];
     }
 

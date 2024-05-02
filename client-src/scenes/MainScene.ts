@@ -276,6 +276,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     create(): void {
+        this.distanceMatrix.init();
         this.setUpTitleMenu();
         this.initSocket();
         _assets_setUpAudio.call(this);
@@ -372,7 +373,7 @@ export class MainScene extends Phaser.Scene {
             timeStep,
             (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
-        this.distanceMatrix.init();
+        // this.distanceMatrix.init();
         this.updateAi(fixedTime, frameSize);
 
 

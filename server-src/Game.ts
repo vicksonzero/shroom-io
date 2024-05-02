@@ -90,6 +90,7 @@ export class Game {
         for (let i = 0; i < 10; i++) {
             const player = this.spawnNpc();
         }
+        this.distanceMatrix.init();
         this.fixedTime.addEvent({
             delay: 10 * 1000,
             loop: true,
@@ -359,7 +360,7 @@ export class Game {
             timeStep,
             // (DEBUG_PHYSICS ? this.physicsDebugLayer : undefined)
         );
-        this.distanceMatrix.init();
+        // this.distanceMatrix.init();
         this.updateBullets();
         this.updateDelayedMinings();
         this.updateNodes();
